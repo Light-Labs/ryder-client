@@ -95,7 +95,7 @@ function serial_error(error)
 
 function serial_data(data)
 	{
-	this.options.debug && console.debug('data from Ryder',data.toString('hex'),"\n",data.toString('utf8'));
+	this.options.debug && console.debug('data from Ryder','0x'+data.toString('hex'));
 	if (this[state_symbol] === STATE_IDLE)
 		this.options.debug && console.warn('Got data from Ryder without asking, discarding.');
 	else
