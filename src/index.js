@@ -275,6 +275,8 @@ RyderSerial.prototype.open = function(port,options)
 
 RyderSerial.prototype.close = function()
 	{
+	if (this.closing)
+		return;
 	this.closing = true;
 	this.clear();
 	this.serial.close();
