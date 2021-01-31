@@ -86,8 +86,7 @@ function serial_error(error)
 		this[train_symbol].shift(); 
 		reject(error);
 		}
-	if (this[watchdog_symbol])
-		clearTimeout(this[watchdog_symbol]);
+	clearTimeout(this[watchdog_symbol]);
 	//this.unlock(); // is this a good idea?
 	this[state_symbol] = STATE_IDLE;
 	this.next();
@@ -100,8 +99,7 @@ function serial_data(data)
 		this.options.debug && console.warn('Got data from Ryder without asking, discarding.');
 	else
 		{
-		if (this[watchdog_symbol])
-			clearTimeout(this[watchdog_symbol]);
+		clearTimeout(this[watchdog_symbol]);
 		if (!this[train_symbol][0])
 			return;
 		var [,resolve,reject] = this[train_symbol][0];
@@ -225,6 +223,7 @@ RyderSerial.prototype.open = function(port,options)
 	this.options.debug && console.debug('ryderserial attempt open');
 	//return new Promise((resolve,reject) =>
 	//	{
+		this.closing = false;
 		if (this.serial && this.serial.isOpen)
 			return;
 		if (this.serial)
@@ -243,8 +242,7 @@ RyderSerial.prototype.open = function(port,options)
 			{
 			if (!this.serial.isOpen)
 				{
-				if (this[reconnect_symbol])
-					clearInterval(this[reconnect_symbol]);
+				clearInterval(this[reconnect_symbol]);
 				this[reconnect_symbol] = setInterval(this.open.bind(this),this.options.reconnectTime);
 				this.emit('failed');
 				//reject && reject(new Error('ERROR_DISCONNECTED'));
@@ -255,9 +253,9 @@ RyderSerial.prototype.open = function(port,options)
 			{
 			this.options.debug && console.debug('ryderserial close');
 			this.emit('close');
-			if (this[reconnect_symbol])
-				clearInterval(this[reconnect_symbol]);
-			this[reconnect_symbol] = setInterval(this.open.bind(this),this.options.reconnectTime);
+			clearInterval(this[reconnect_symbol]);
+			if (!this.closing)
+				this[reconnect_symbol] = setInterval(this.open.bind(this),this.options.reconnectTime);
 			});
 		this.serial.on('open',() =>
 			{
@@ -266,8 +264,7 @@ RyderSerial.prototype.open = function(port,options)
 			// this[train_symbol] = [];
 			// this[state_symbol] = STATE_IDLE;
 			// this[lock_symbol] = [];
-			if (this[reconnect_symbol])
-				clearInterval(this[reconnect_symbol]);
+			clearInterval(this[reconnect_symbol]);
 			this.emit('open');
 			this.next();
 			//resolve && resolve();
@@ -277,7 +274,10 @@ RyderSerial.prototype.open = function(port,options)
 
 RyderSerial.prototype.close = function()
 	{
-	try{this.serial.close((e)=>{});}catch(e){}
+	this.closing = true;
+	this.clear();
+	this.serial.close();
+	clearInterval(this[reconnect_symbol]);
 	this.serial = null;
 	};
 
@@ -353,16 +353,14 @@ RyderSerial.prototype.next = function()
 			{
 			return serial_error.bind(this)(error);
 			}
-		if (this[watchdog_symbol])
-			clearTimeout(this[watchdog_symbol]);
+		clearTimeout(this[watchdog_symbol]);
 		this[watchdog_symbol] = setTimeout(serial_watchdog.bind(this),WATCHDOG_TIMEOUT);
 		}
 	};
 
 RyderSerial.prototype.clear = function()
 	{
-	if (this[watchdog_symbol])
-		clearTimeout(this[watchdog_symbol]);
+	clearTimeout(this[watchdog_symbol]);
 	var error = new Error('ERROR_CLEARED');
 	for (var i = 0 ; i < this[train_symbol].length ; ++i)
 		this[train_symbol][i][2](error); // reject all pending
