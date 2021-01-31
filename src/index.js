@@ -241,7 +241,7 @@ RyderSerial.prototype.open = function(port,options)
 		this.serial.on('data',serial_data.bind(this));
 		this.serial.on('error',error => 
 			{
-			if (!this.serial.isOpen)
+			if (this.serial && !this.serial.isOpen)
 				{
 				clearInterval(this[reconnect_symbol]);
 				this[reconnect_symbol] = setInterval(this.open.bind(this),this.options.reconnectTime);
@@ -319,7 +319,7 @@ RyderSerial.prototype.sequence = function(callback)
 
 RyderSerial.prototype.send = function(data,append)
 	{
-	if (!this.serial.isOpen)
+	if (!this.serial || !this.serial.isOpen)
 		return Promise.reject(new Error('ERROR_DISCONNECTED'));
 	if (typeof data === 'number')
 		data = String.fromCharCode(data);
@@ -338,7 +338,7 @@ RyderSerial.prototype.next = function()
 		{
 		if (!this[train_symbol].length)
 			return;
-		if (!this.serial.isOpen)
+		if (!this.serial || !this.serial.isOpen)
 			{
 			var [,,reject] = this[state_symbol];
 			this[train_symbol] = [];
