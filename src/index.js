@@ -4,13 +4,13 @@ const SerialPort = require('serialport');
 
 // responses
 const RESPONSE_OK = 1; // generic command ok/received
-const RESPONSE_WAIT_USER_CONFIRM = 10; // user has to confirm action
-const RESPONSE_LOCKED = 11; // device is locked, send PIN
 const RESPONSE_SEND_INPUT = 2; // command received, send input
 const RESPONSE_REJECTED = 3; // user input rejected
 const RESPONSE_OUTPUT = 4; // sending output
 const RESPONSE_OUTPUT_END = 5; // end of output
 const RESPONSE_ESC_SEQUENCE = 6; // output esc sequence
+const RESPONSE_WAIT_USER_CONFIRM = 10; // user has to confirm action
+const RESPONSE_LOCKED = 11; // device is locked, send PIN
 
 // error responses
 var response_errors = {
@@ -144,6 +144,7 @@ function serial_data(data)
 			else if (data[0] === RESPONSE_WAIT_USER_CONFIRM)
 				{
 				// wait for user to confirm
+				this.emit('wait_user_confirm');
 				this.options.debug && console.debug('waiting for user confirm on device');
 				if (data.length > 1)
 					{
