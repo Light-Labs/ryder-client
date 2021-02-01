@@ -320,7 +320,7 @@ RyderSerial.prototype.sequence = function(callback)
 	return this.lock().then(callback).finally(this.unlock.bind(this));
 	};
 
-RyderSerial.prototype.send = function(data,append)
+RyderSerial.prototype.send = function(data,prepend)
 	{
 	if (!this.serial || !this.serial.isOpen)
 		return Promise.reject(new Error('ERROR_DISCONNECTED'));
@@ -330,7 +330,7 @@ RyderSerial.prototype.send = function(data,append)
 	return new Promise((resolve,reject) =>
 		{
 		var c = [data,resolve,reject,false,''];
-		append ? this[train_symbol].unshift(c) : this[train_symbol].push(c);
+		prepend ? this[train_symbol].unshift(c) : this[train_symbol].push(c);
 		this.next();
 		});
 	};
