@@ -25,8 +25,11 @@ const options = {
 
 const ryder_serial = new RyderSerial(ryder_port,options);
 
-const response = await ryder_serial.send(RyderSerial.COMMAND_INFO);
-console.log(response);
+ ryder_serial.on('open', ()=>{
+    const response =  ryder_serial.send(RyderSerial.COMMAND_INFO).then(response =>{
+        console.log(`Info: ${response}`);
+    });
+})
 ```
 
 ## Sequencing commands
