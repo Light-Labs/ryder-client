@@ -246,7 +246,7 @@ RyderSerial.prototype.open = function(port,options)
 				{
 				clearInterval(this[reconnect_symbol]);
 				this[reconnect_symbol] = setInterval(this.open.bind(this),this.options.reconnectTime);
-				this.emit('failed');
+				this.emit('failed',error);
 				//reject && reject(new Error('ERROR_DISCONNECTED'));
 				}
 			serial_error.bind(this);
