@@ -59,8 +59,6 @@ async function autodetectPort(){
 	return ryderDevice.path;
 }
 
-
-
 RyderSerial.COMMAND_WAKE = 1;
 RyderSerial.COMMAND_INFO = 2;
 RyderSerial.COMMAND_SETUP = 10;
