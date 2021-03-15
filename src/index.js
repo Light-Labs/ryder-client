@@ -53,6 +53,14 @@ function RyderSerial(port,options)
 	this.open();
 	}
 
+async function autodetectPort(){
+	const devices = await SerialPort.list();
+	const ryderDevice = devices.find(deviceList => deviceList.vendorId === '10c4');
+	return ryderDevice.path;
+}
+
+
+
 RyderSerial.COMMAND_WAKE = 1;
 RyderSerial.COMMAND_INFO = 2;
 RyderSerial.COMMAND_SETUP = 10;
