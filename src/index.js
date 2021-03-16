@@ -55,8 +55,13 @@ function RyderSerial(port,options)
 
 async function autodetectPort(){
 	const devices = await SerialPort.list();
-	const ryderDevice = devices.find(deviceList => deviceList.vendorId === '10c4');
-	return ryderDevice.path;
+	const ryderDevice = devices.find(deviceList => (deviceList.vendorId === '10c4' && deviceList.productId === 'ea60'));
+	if(!ryderDevice){
+		reject(new Error('ERROR_NO_DEVICE_FOUND'));
+	}else {
+		console.debug(`Path auto-detected: ${ryderDevice.path}`);
+		return ryderDevice.path;
+	}
 }
 
 RyderSerial.COMMAND_WAKE = 1;
@@ -226,7 +231,7 @@ function serial_watchdog()
 RyderSerial.prototype = Object.create(require('events').EventEmitter.prototype);
 RyderSerial.prototype.constructor = RyderSerial;
 
-RyderSerial.prototype.open = function(port,options)
+RyderSerial.prototype.open = async function(port,options)
 	{
 	this.options.debug && console.debug('ryderserial attempt open');
 	//return new Promise((resolve,reject) =>
@@ -236,7 +241,8 @@ RyderSerial.prototype.open = function(port,options)
 			return;
 		if (this.serial)
 			this.close();
-		this.port = port || this.port;
+		//this.port = port || this.port;
+		this.port = port || this.port || await autodetectPort();
 		this.options = options || this.options || {};
 		if (!this.options.baudRate)
 			this.options.baudRate = 115200;
