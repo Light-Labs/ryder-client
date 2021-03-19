@@ -218,7 +218,6 @@ function serial_watchdog()
 	}
 
 async function enumerate_devices(){
-	console.log('running')
 	const devices = await SerialPort.list();
 	const ryderDevices = devices.find(deviceList => (deviceList.vendorId === '10c4' && deviceList.productId === 'ea60'));
 	if(!ryderDevices){
