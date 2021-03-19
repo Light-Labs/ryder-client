@@ -240,7 +240,6 @@ RyderSerial.prototype.open = function(port,options)
 			return;
 		if (this.serial)
 			this.close();
-		//this.port = port || this.port;
 		this.port = port || this.port
 		this.options = options || this.options || {};
 		if (!this.options.baudRate)
