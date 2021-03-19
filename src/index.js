@@ -53,17 +53,6 @@ function RyderSerial(port,options)
 	this.open();
 	}
 
-async function autodetectPort(){
-	const devices = await SerialPort.list();
-	const ryderDevice = devices.find(deviceList => (deviceList.vendorId === '10c4' && deviceList.productId === 'ea60'));
-	if(!ryderDevice){
-		reject(new Error('ERROR_NO_DEVICE_FOUND'));
-	}else {
-		console.debug(`Path auto-detected: ${ryderDevice.path}`);
-		return ryderDevice.path;
-	}
-}
-
 RyderSerial.COMMAND_WAKE = 1;
 RyderSerial.COMMAND_INFO = 2;
 RyderSerial.COMMAND_SETUP = 10;
@@ -228,10 +217,21 @@ function serial_watchdog()
 	this.next();
 	}
 
+async function enumerate_devices(){
+	console.log('running')
+	const devices = await SerialPort.list();
+	const ryderDevices = devices.find(deviceList => (deviceList.vendorId === '10c4' && deviceList.productId === 'ea60'));
+	if(!ryderDevices){
+		reject(new Error('ERROR_NO_DEVICE_FOUND'));
+	}else{
+		return ryderDevices;
+	}
+}
+
 RyderSerial.prototype = Object.create(require('events').EventEmitter.prototype);
 RyderSerial.prototype.constructor = RyderSerial;
 
-RyderSerial.prototype.open = async function(port,options)
+RyderSerial.prototype.open = function(port,options)
 	{
 	this.options.debug && console.debug('ryderserial attempt open');
 	//return new Promise((resolve,reject) =>
@@ -242,7 +242,7 @@ RyderSerial.prototype.open = async function(port,options)
 		if (this.serial)
 			this.close();
 		//this.port = port || this.port;
-		this.port = port || this.port || await autodetectPort();
+		this.port = port || this.port
 		this.options = options || this.options || {};
 		if (!this.options.baudRate)
 			this.options.baudRate = 115200;
@@ -389,3 +389,4 @@ RyderSerial.prototype.clear = function()
 
 
 module.exports = RyderSerial;
+module.exports.enumerate_devices = enumerate_devices;
