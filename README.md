@@ -16,19 +16,40 @@ Construct and query:
 
 ```JS
 const RyderSerial = require('ryderserial-proto');
-const ryder_port = '/dev/ttyUSB*';
+let ryder_port = '';
 
 const options = {
 	reconnectTime: 1000,	// how long to wait before reconnect (ms).
 	debug: true				// enable debug output to stdout.
 	};
 
-const ryder_serial = new RyderSerial(ryder_port,options);
+initialize().then(() =>
+{
+	const ryder_serial = new RyderSerial(ryder_port, options);
+	ryder_serial.on('open', async ()=>
+	{
+	const response = await ryder_serial.send(RyderSerial.COMMAND_INFO);
+	console.log(response);
+	});
+});
 
- ryder_serial.on('open', async ()=>{
-    	const response = await ryder_serial.send(RyderSerial.COMMAND_INFO);
-    	console.log(response);
-	})
+async function initialize(){
+	if(!ryder_port)
+	{
+	const devices = await RyderSerial.enumerate_devices();
+		if(devices)
+		{
+			if((Object.keys(devices).length / 7) === 1)
+			{
+			ryder_port = devices.path;
+			}else
+			{
+			//If more than one device is found port path must be specified
+			console.debug('More than one device found path must be specified');
+			}
+		}
+	}
+}
 ```
 
 ## Sequencing commands
