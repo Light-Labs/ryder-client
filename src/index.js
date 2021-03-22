@@ -219,7 +219,7 @@ function serial_watchdog()
 
 async function enumerate_devices(){
 	const devices = await SerialPort.list();
-	const ryder_devices = devices.find(deviceList => (deviceList.vendorId === '10c4' && deviceList.productId === 'ea60'));
+	const ryder_devices = devices.filter(deviceList => (deviceList.vendorId === '10c4' && deviceList.productId === 'ea60'));
 	if(!ryder_devices){
 		reject(new Error('ERROR_NO_DEVICE_FOUND'));
 	}else{
