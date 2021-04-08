@@ -33,26 +33,27 @@ initialize().then(() =>
 	});
 });
 
-async function initialize(){
-	if(!ryder_port)
+async function initialize()
 	{
-	const devices = await RyderSerial.enumerate_devices();
-		if(devices)
+		if(!ryder_port)
 		{
-			console.log(devices)
-			if(devices.length === 1)
+		const devices = await RyderSerial.enumerate_devices();
+			if(devices)
 			{
-			ryder_port = devices[0].path;
-			}else if(devices.length > 1)
-			{
-			//If more than one device is found port path must be specified
-			console.debug('More than one device found path must be specified');
-			}
-		}else{
-			console.log('No device found');
-			}
+				console.log(devices)
+				if(devices.length === 1)
+				{
+				ryder_port = devices[0].path;
+				}else if(devices.length > 1)
+				{
+				//If more than one device is found port path must be specified
+				console.debug('More than one device found path must be specified');
+				}
+			}else{
+				console.log('No device found');
+				}
+		}
 	}
-}
 ```
 
 ## Sequencing commands
