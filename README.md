@@ -39,15 +39,18 @@ async function initialize(){
 	const devices = await RyderSerial.enumerate_devices();
 		if(devices)
 		{
+			console.log(devices)
 			if(devices.length === 1)
 			{
 			ryder_port = devices[0].path;
-			}else
+			}else if(devices.length > 1)
 			{
 			//If more than one device is found port path must be specified
 			console.debug('More than one device found path must be specified');
 			}
-		}
+		}else{
+			console.log('No device found');
+			}
 	}
 }
 ```
