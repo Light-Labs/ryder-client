@@ -38,7 +38,7 @@ const reconnect_symbol = Symbol('reconnect');
 const WATCHDOG_TIMEOUT = 5000;
 var id = 0;
 class RyderSerial extends events_1.default.EventEmitter {
-    constructor(port, options) {
+    constructor(port, options = { rejectOnLocked: false, reconnectTime: WATCHDOG_TIMEOUT, debug: false }) {
         super();
         this.id = 0;
         this.id = id++;
@@ -48,7 +48,7 @@ class RyderSerial extends events_1.default.EventEmitter {
         this[state_symbol] = STATE_IDLE;
         this[lock_symbol] = [];
         this.closing = false;
-        this.open();
+        this.open(port, options);
     }
     serial_error(error) {
         this.emit('error', error);

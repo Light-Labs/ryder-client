@@ -1,6 +1,6 @@
 'use strict';
 
-import SerialPort, { OpenOptions } from 'serialport';
+import SerialPort from 'serialport';
 import { default as Events } from "events";
 
 // responses
@@ -43,7 +43,7 @@ const WATCHDOG_TIMEOUT = 5000;
 
 var id = 0;
 
-export interface RyderSerialOptions extends OpenOptions {
+export interface RyderSerialOptions extends SerialPort.OpenOptions {
   rejectOnLocked: any;
   reconnectTime: number,
   debug: boolean;
@@ -57,6 +57,7 @@ type TrainEntry = [
   // TODO: does this need to be refactored to type `Buffer`?
   string                  // output buffer
 ]
+
 
 export default class RyderSerial extends Events.EventEmitter {
   id: number = 0;
@@ -96,7 +97,7 @@ export default class RyderSerial extends Events.EventEmitter {
   static RESPONSE_REJECTED = RESPONSE_REJECTED;
   static RESPONSE_LOCKED = RESPONSE_LOCKED;
 
-  constructor(port: string, options: RyderSerialOptions) {
+  constructor(port: string, options: RyderSerialOptions = { rejectOnLocked: false, reconnectTime: WATCHDOG_TIMEOUT, debug: false }) {
     super()
     this.id = id++;
     this.port = port;
@@ -105,7 +106,7 @@ export default class RyderSerial extends Events.EventEmitter {
     this[state_symbol] = STATE_IDLE;
     this[lock_symbol] = [];
     this.closing = false;
-    this.open();
+    this.open(port, options);
   }
 
   serial_error(error: Error) {
