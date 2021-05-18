@@ -119,7 +119,6 @@ export default class RyderSerial extends Events.EventEmitter {
       reject(error);
     }
     clearTimeout(this[watchdog_symbol]);
-    //this.unlock(); // is this a good idea?
     this[state_symbol] = STATE_IDLE;
     this.next();
   }
@@ -232,8 +231,6 @@ export default class RyderSerial extends Events.EventEmitter {
 
   open(port?: string, options?: RyderSerialOptions): void {
     this.options.debug && console.debug('ryderserial attempt open');
-    //return new Promise((resolve,reject) =>
-    //	{
     this.closing = false;
     if (this.serial && this.serial.isOpen)
       return;
@@ -255,7 +252,6 @@ export default class RyderSerial extends Events.EventEmitter {
         // TODO: confirm that setInterval is using Node's implementation; and if it's not WHY
         this[reconnect_symbol] = setInterval(this.open.bind(this), this.options.reconnectTime);
         this.emit('failed', error);
-        //reject && reject(new Error('ERROR_DISCONNECTED'));
       }
       this.serial_error.bind(this);
     });
@@ -275,12 +271,10 @@ export default class RyderSerial extends Events.EventEmitter {
       clearInterval(this[reconnect_symbol]);
       this.emit('open');
       this.next();
-      //resolve && resolve();
     });
-    //	});
   };
 
-  close() {
+  close(): void {
     if (this.closing)
       return;
     this.closing = true;
@@ -290,7 +284,7 @@ export default class RyderSerial extends Events.EventEmitter {
     this.serial = undefined;
   };
 
-  locked() {
+  locked(): boolean {
     return !!this[lock_symbol].length;
   };
 
@@ -307,7 +301,7 @@ export default class RyderSerial extends Events.EventEmitter {
     });
   };
 
-  unlock() {
+  unlock(): void {
     if (this[lock_symbol].length) {
       this.options.debug && console.debug('ryderserial unlock');
       var resolve = this[lock_symbol].shift();
@@ -375,195 +369,3 @@ export default class RyderSerial extends Events.EventEmitter {
 
 
 }
-
-// function RyderSerial(port: string, options: SerialPort.OpenOptions) {
-//   if (!(this instanceof RyderSerial))
-//     return new RyderSerial(port, options);
-//   this.id = id++;
-//   this.port = port;
-//   this.options = options;
-//   this[train_symbol] = [];
-//   this[state_symbol] = STATE_IDLE;
-//   this[lock_symbol] = [];
-//   this.open();
-// }
-
-// RyderSerial.COMMAND_WAKE = 1;
-// RyderSerial.COMMAND_INFO = 2;
-// RyderSerial.COMMAND_SETUP = 10;
-// RyderSerial.COMMAND_RESTORE_FROM_SEED = 11;
-// RyderSerial.COMMAND_RESTORE_FROM_MNEMONIC = 12;
-// RyderSerial.COMMAND_ERASE = 13;
-// RyderSerial.COMMAND_EXPORT_OWNER_KEY = 18;
-// RyderSerial.COMMAND_EXPORT_OWNER_KEY_PRIVATE_KEY = 19;
-// RyderSerial.COMMAND_EXPORT_APP_KEY = 20;
-// RyderSerial.COMMAND_EXPORT_APP_KEY_PRIVATE_KEY = 21;
-// RyderSerial.COMMAND_EXPORT_OWNER_APP_KEY_PRIVATE_KEY = 23;
-
-// RyderSerial.COMMAND_EXPORT_PUBLIC_IDENTITIES = 30;
-// RyderSerial.COMMAND_EXPORT_PUBLIC_IDENTITY = 31;
-
-// RyderSerial.COMMAND_START_ENCRYPT = 40;
-// RyderSerial.COMMAND_START_DECRYPT = 41;
-
-// RyderSerial.COMMAND_CANCEL = 100;
-
-// RyderSerial.RESPONSE_OK = RESPONSE_OK;
-// RyderSerial.RESPONSE_SEND_INPUT = RESPONSE_SEND_INPUT;
-// RyderSerial.RESPONSE_REJECTED = RESPONSE_REJECTED;
-// RyderSerial.RESPONSE_LOCKED = RESPONSE_LOCKED;
-
-
-
-// RyderSerial.prototype = Object.create(require('events').EventEmitter.prototype);
-// constructor
-
-// RyderSerial.prototype.open = function (port, options) {
-//   this.options.debug && console.debug('ryderserial attempt open');
-//   //return new Promise((resolve,reject) =>
-//   //	{
-//   this.closing = false;
-//   if (this.serial && this.serial.isOpen)
-//     return;
-//   if (this.serial)
-//     this.close();
-//   this.port = port || this.port;
-//   this.options = options || this.options || {};
-//   if (!this.options.baudRate)
-//     this.options.baudRate = 115200;
-//   if (!this.options.lock)
-//     this.options.lock = true;
-//   if (!this.options.reconnectTime)
-//     this.options.reconnectTime = 1000;
-//   this.serial = new SerialPort(this.port, this.options);
-//   this.serial.on('data', serial_data.bind(this));
-//   this.serial.on('error', error => {
-//     if (this.serial && !this.serial.isOpen) {
-//       clearInterval(this[reconnect_symbol]);
-//       this[reconnect_symbol] = setInterval(this.open.bind(this), this.options.reconnectTime);
-//       this.emit('failed', error);
-//       //reject && reject(new Error('ERROR_DISCONNECTED'));
-//     }
-//     serial_error.bind(this);
-//   });
-//   this.serial.on('close', () => {
-//     this.options.debug && console.debug('ryderserial close');
-//     this.emit('close');
-//     clearInterval(this[reconnect_symbol]);
-//     if (!this.closing)
-//       this[reconnect_symbol] = setInterval(this.open.bind(this), this.options.reconnectTime);
-//   });
-//   this.serial.on('open', () => {
-//     this.options.debug && console.debug('ryderserial open');
-//     // reset or keep?
-//     // this[train_symbol] = [];
-//     // this[state_symbol] = STATE_IDLE;
-//     // this[lock_symbol] = [];
-//     clearInterval(this[reconnect_symbol]);
-//     this.emit('open');
-//     this.next();
-//     //resolve && resolve();
-//   });
-//   //	});
-// };
-
-// RyderSerial.prototype.close = function () {
-//   if (this.closing)
-//     return;
-//   this.closing = true;
-//   this.clear();
-//   this.serial.close();
-//   clearInterval(this[reconnect_symbol]);
-//   this.serial = null;
-// };
-
-// RyderSerial.prototype.locked = function () {
-//   return !!this[lock_symbol].length;
-// };
-
-// RyderSerial.prototype.lock = function () {
-//   this.options.debug && console.debug('ryderserial lock');
-//   if (!this[lock_symbol].length) {
-//     this[lock_symbol].push(false);
-//     return Promise.resolve();
-//   }
-//   return new Promise((resolve, reject) => this[lock_symbol].push(resolve));
-// };
-
-// RyderSerial.prototype.unlock = function () {
-//   if (this[lock_symbol].length) {
-//     this.options.debug && console.debug('ryderserial unlock');
-//     var resolve = this[lock_symbol].shift();
-//     if (!resolve && this[lock_symbol].length)
-//       resolve = this[lock_symbol].shift();
-//     resolve && resolve();
-//   }
-// };
-
-// RyderSerial.prototype.sequence = function (callback) {
-//   if (typeof callback !== 'function' || callback.constructor.name !== 'AsyncFunction')
-//     return Promise.reject(new Error('ERROR_SEQUENCE_NOT_ASYNC'));
-//   return this.lock().then(callback).finally(this.unlock.bind(this));
-// };
-
-// RyderSerial.prototype.send = function (data, prepend) {
-//   if (!this.serial || !this.serial.isOpen)
-//     return Promise.reject(new Error('ERROR_DISCONNECTED'));
-//   if (typeof data === 'number')
-//     data = String.fromCharCode(data);
-//   this.options.debug && console.debug('queue data for Ryder: ' + (data.byteLength || data.length) + ' byte(s)', data);
-//   return new Promise((resolve, reject) => {
-//     var c = [data, resolve, reject, false, ''];
-//     prepend ? this[train_symbol].unshift(c) : this[train_symbol].push(c);
-//     this.next();
-//   });
-// };
-
-// RyderSerial.prototype.next = function () {
-//   if (this[state_symbol] === STATE_IDLE) {
-//     if (!this[train_symbol].length)
-//       return;
-//     if (!this.serial || !this.serial.isOpen) {
-//       var [, , reject] = this[state_symbol];
-//       this[train_symbol] = [];
-//       return reject(new Error('ERROR_DISCONNECTED'));
-//     }
-//     this[state_symbol] = STATE_SENDING;
-//     try {
-//       this.options.debug && console.debug('send data to Ryder: ' + (this[train_symbol][0][0].byteLength || this[train_symbol][0][0].length) + ' byte(s)', this[train_symbol][0][0]);
-//       this.serial.write(this[train_symbol][0][0]);
-//     }
-//     catch (error) {
-//       return serial_error.bind(this)(error);
-//     }
-//     clearTimeout(this[watchdog_symbol]);
-//     this[watchdog_symbol] = setTimeout(serial_watchdog.bind(this), WATCHDOG_TIMEOUT);
-//   }
-// };
-
-// RyderSerial.prototype.clear = function () {
-//   clearTimeout(this[watchdog_symbol]);
-//   var error = new Error('ERROR_CLEARED');
-//   for (var i = 0; i < this[train_symbol].length; ++i)
-//     this[train_symbol][i][2](error); // reject all pending
-//   this[train_symbol] = [];
-//   this[state_symbol] = STATE_IDLE;
-//   for (var i = 0; i < this[lock_symbol].length; ++i)
-//     this[lock_symbol] && this[lock_symbol](); // release all locks
-//   this[lock_symbol] = [];
-// };
-
-// command-specific methods
-
-// RyderSerial.prototype.wake = () => this.send(COMMAND_WAKE)
-
-// RyderSerial.prototype.info = () => this.send(COMMAND_INFO)
-
-// RyderSerial.prototype.export_owner_key_private_key = (identity_number) => this.send([COMMAND_EXPORT_OWNER_APP_KEY_PRIVATE_KEY, identity_number])
-
-// RyderSerial.prototype.restore_from_mnemonic = function(word_count, mnemonic_words) {
-// 	const res = await this.send([COMMAND_RESTORE_FROM_MNEMONIC, word_count])
-// 	if ()
-// }
-
-// module.exports = RyderSerial;
