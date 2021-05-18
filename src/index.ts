@@ -369,3 +369,5 @@ export default class RyderSerial extends Events.EventEmitter {
 
 
 }
+
+module.exports = RyderSerial
