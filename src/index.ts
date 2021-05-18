@@ -50,16 +50,12 @@ export interface RyderSerialOptions extends OpenOptions {
 }
 
 type TrainEntry = [
-  // data
-  string,
-  // resolve
-  (value?: any) => void,
-  // reject
-  (error?: any) => void,
-  // isEscapedByte
-  boolean,
-  // output buffer // TODO: does this need to be refactored to type `Buffer`?
-  string
+  string,                 // data
+  (value?: any) => void,  // resolve
+  (error?: any) => void,  // reject
+  boolean,                // isEscapedByte
+  // TODO: does this need to be refactored to type `Buffer`?
+  string                  // output buffer
 ]
 
 export default class RyderSerial extends Events.EventEmitter {
