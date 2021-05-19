@@ -1,5 +1,6 @@
 'use strict';
 
+const { resolve } = require('path');
 const SerialPort = require('serialport');
 
 // responses
@@ -217,6 +218,16 @@ function serial_watchdog()
 	this.next();
 	}
 
+async function enumerate_devices(){
+	const devices = await SerialPort.list();
+	const ryder_devices = devices.filter(deviceList => (deviceList.vendorId === '10c4' && deviceList.productId === 'ea60'));
+	if(!ryder_devices.length){
+		resolve(false);
+	}else{
+		return ryder_devices;
+	}
+}
+
 RyderSerial.prototype = Object.create(require('events').EventEmitter.prototype);
 RyderSerial.prototype.constructor = RyderSerial;
 
@@ -377,3 +388,4 @@ RyderSerial.prototype.clear = function()
 
 
 module.exports = RyderSerial;
+module.exports.enumerate_devices = enumerate_devices;
