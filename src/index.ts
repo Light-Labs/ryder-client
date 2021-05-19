@@ -121,7 +121,7 @@ export default class RyderSerial extends Events.EventEmitter {
   }
 
   serial_data(data: Uint8Array): boolean | void {
-    this.options.debug && console.debug('data from Ryder', '0x' + data.toString());
+    this.options.debug && console.debug('data from Ryder', '0x' + Buffer.from(data).toString("hex"));
     if (this[state_symbol] === STATE_IDLE)
       this.options.debug && console.warn('Got data from Ryder without asking, discarding.');
     else {
@@ -317,14 +317,14 @@ export default class RyderSerial extends Events.EventEmitter {
     return this.lock().then(callback).finally(this.unlock.bind(this));
   };
 
-  send(data: string, prepend?: boolean): Promise<void> {
+  send(data: string | number, prepend?: boolean): Promise<void> {
     if (!this.serial || !this.serial.isOpen)
       return Promise.reject(new Error('ERROR_DISCONNECTED'));
     if (typeof data === 'number')
       data = String.fromCharCode(data);
-    this.options.debug && console.debug('queue data for Ryder: ' + data.length + ' byte(s)', data);
+    this.options.debug && console.debug('queue data for Ryder: ' + data.length + ' byte(s)', Buffer.from(data).toString("hex"));
     return new Promise((resolve, reject) => {
-      const c: TrainEntry = [data, resolve, reject, false, ''];
+      const c: TrainEntry = [data as string, resolve, reject, false, ''];
       prepend ? this[train_symbol].unshift(c) : this[train_symbol].push(c);
       this.next();
     });
@@ -342,7 +342,7 @@ export default class RyderSerial extends Events.EventEmitter {
       }
       this[state_symbol] = STATE_SENDING;
       try {
-        this.options.debug && console.debug('send data to Ryder: ' + this[train_symbol][0][0].length + ' byte(s)', this[train_symbol][0][0]);
+        this.options.debug && console.debug('send data to Ryder: ' + this[train_symbol][0][0].length + ' byte(s)', Buffer.from(this[train_symbol][0][0]).toString("hex"));
         this.serial.write(this[train_symbol][0][0]);
       }
       catch (error) {
@@ -358,11 +358,11 @@ export default class RyderSerial extends Events.EventEmitter {
   clear() {
     clearTimeout(this[watchdog_symbol]);
     var error = new Error('ERROR_CLEARED');
-    for (var i = 0; i < this[train_symbol].length; ++i)
+    for (let i = 0; i < this[train_symbol].length; ++i)
       this[train_symbol][i][2](error); // reject all pending
     this[train_symbol] = [];
     this[state_symbol] = STATE_IDLE;
-    for (var i = 0; i < this[lock_symbol].length; ++i)
+    for (let i = 0; i < this[lock_symbol].length; ++i)
       this[lock_symbol][i] && this[lock_symbol][i](); // release all locks
     this[lock_symbol] = [];
   };

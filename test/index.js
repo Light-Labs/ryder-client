@@ -2,9 +2,9 @@
 
 const RyderSerial = require("../out/index");
 
-const PORT_NUMBER = "/dev/ttys004" // feel free to change this to test your own running Ryder simulator
+const PORT_NUMBER = "/dev/ttys003" // feel free to change this to test your own running Ryder simulator
 
-const ryder_serial = new RyderSerial(PORT_NUMBER, { debug: false })
+const ryder_serial = new RyderSerial(PORT_NUMBER, { debug: true })
 
 async function test() {
 

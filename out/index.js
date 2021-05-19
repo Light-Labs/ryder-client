@@ -61,7 +61,7 @@ class RyderSerial extends events_1.default.EventEmitter {
         this.next();
     }
     serial_data(data) {
-        this.options.debug && console.debug('data from Ryder', '0x' + data.toString());
+        this.options.debug && console.debug('data from Ryder', '0x' + Buffer.from(data).toString("hex"));
         if (this[state_symbol] === STATE_IDLE)
             this.options.debug && console.warn('Got data from Ryder without asking, discarding.');
         else {
@@ -261,7 +261,7 @@ class RyderSerial extends events_1.default.EventEmitter {
             return Promise.reject(new Error('ERROR_DISCONNECTED'));
         if (typeof data === 'number')
             data = String.fromCharCode(data);
-        this.options.debug && console.debug('queue data for Ryder: ' + data.length + ' byte(s)', data);
+        this.options.debug && console.debug('queue data for Ryder: ' + data.length + ' byte(s)', Buffer.from(data).toString("hex"));
         return new Promise((resolve, reject) => {
             const c = [data, resolve, reject, false, ''];
             prepend ? this[train_symbol].unshift(c) : this[train_symbol].push(c);
@@ -281,7 +281,7 @@ class RyderSerial extends events_1.default.EventEmitter {
             }
             this[state_symbol] = STATE_SENDING;
             try {
-                this.options.debug && console.debug('send data to Ryder: ' + this[train_symbol][0][0].length + ' byte(s)', this[train_symbol][0][0]);
+                this.options.debug && console.debug('send data to Ryder: ' + this[train_symbol][0][0].length + ' byte(s)', Buffer.from(this[train_symbol][0][0]).toString("hex"));
                 this.serial.write(this[train_symbol][0][0]);
             }
             catch (error) {
@@ -297,11 +297,11 @@ class RyderSerial extends events_1.default.EventEmitter {
     clear() {
         clearTimeout(this[watchdog_symbol]);
         var error = new Error('ERROR_CLEARED');
-        for (var i = 0; i < this[train_symbol].length; ++i)
+        for (let i = 0; i < this[train_symbol].length; ++i)
             this[train_symbol][i][2](error); // reject all pending
         this[train_symbol] = [];
         this[state_symbol] = STATE_IDLE;
-        for (var i = 0; i < this[lock_symbol].length; ++i)
+        for (let i = 0; i < this[lock_symbol].length; ++i)
             this[lock_symbol][i] && this[lock_symbol][i](); // release all locks
         this[lock_symbol] = [];
     }
