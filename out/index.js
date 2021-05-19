@@ -61,12 +61,6 @@ class RyderSerial extends events_1.default.EventEmitter {
         this.next();
     }
     serial_data(data) {
-        if (!(this instanceof RyderSerial)) {
-            console.log("THIS IS NOT INSTANCE");
-        }
-        else {
-            console.log("THIS IS INSTANCE");
-        }
         this.options.debug && console.debug('data from Ryder', '0x' + data.toString());
         if (this[state_symbol] === STATE_IDLE)
             this.options.debug && console.warn('Got data from Ryder without asking, discarding.');
@@ -77,14 +71,12 @@ class RyderSerial extends events_1.default.EventEmitter {
             var [, resolve, reject] = this[train_symbol][0];
             var offset = 0;
             if (this[state_symbol] === STATE_SENDING) {
-                console.log("STATE_SENDING");
                 if (data[0] === RyderSerial.RESPONSE_LOCKED) {
-                    console.log("!! WARNING: RESPONSE_LOCKED");
+                    this.options.debug && console.debug("!! WARNING: RESPONSE_LOCKED -- RYDER DEVICE IS NEVER SUPPOSED TO EMIT THIS EVENT");
                     if (this.options.rejectOnLocked) {
-                        var error = new Error('ERROR_LOCKED');
-                        for (var i = 0; i < this[train_symbol].length; ++i) {
-                            // const shifted_length = this[train_symbol].unshift();
-                            var [, , reject] = this[train_symbol][i];
+                        const error = new Error('ERROR_LOCKED');
+                        for (let i = 0; i < this[train_symbol].length; ++i) {
+                            const [, , reject] = this[train_symbol][i];
                             reject(error);
                         }
                         this[state_symbol] = STATE_IDLE;
@@ -92,7 +84,6 @@ class RyderSerial extends events_1.default.EventEmitter {
                         return;
                     }
                     else {
-                        console.log("this.emit('locked')");
                         this.emit('locked');
                     }
                 }
@@ -144,9 +135,9 @@ class RyderSerial extends events_1.default.EventEmitter {
                 }
             }
             if (this[state_symbol] === STATE_READING) {
-                this[watchdog_symbol] = setTimeout(this.serial_watchdog, WATCHDOG_TIMEOUT);
-                for (var i = offset; i < data.byteLength; ++i) {
-                    var b = data[i];
+                this[watchdog_symbol] = setTimeout(this.serial_watchdog.bind(this), WATCHDOG_TIMEOUT);
+                for (let i = offset; i < data.byteLength; ++i) {
+                    const b = data[i];
                     if (!this[train_symbol][0][3]) // previous was not escape byte
                      {
                         if (b === RESPONSE_ESC_SEQUENCE) {
@@ -170,7 +161,6 @@ class RyderSerial extends events_1.default.EventEmitter {
         if (!this[train_symbol][0])
             return;
         var [, , reject] = this[train_symbol][0];
-        console.log("reject");
         this[train_symbol].shift();
         reject(new Error('ERROR_WATCHDOG'));
         this[state_symbol] = STATE_IDLE;
@@ -294,8 +284,7 @@ class RyderSerial extends events_1.default.EventEmitter {
             this[state_symbol] = STATE_SENDING;
             try {
                 this.options.debug && console.debug('send data to Ryder: ' + this[train_symbol][0][0].length + ' byte(s)', this[train_symbol][0][0]);
-                const res = this.serial.write(this[train_symbol][0][0]);
-                console.log("this.serial.write returned ", res);
+                this.serial.write(this[train_symbol][0][0]);
             }
             catch (error) {
                 this.options.debug && console.log(`encountered error while sending data: ${error}`);
