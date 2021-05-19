@@ -1,10 +1,20 @@
 'use strict';
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const serialport_1 = __importDefault(require("serialport"));
 const events_1 = __importDefault(require("events"));
+const path_1 = require("path");
 // responses
 const RESPONSE_OK = 1; // generic command ok/received
 const RESPONSE_SEND_INPUT = 2; // command received, send input
@@ -328,4 +338,17 @@ RyderSerial.RESPONSE_OK = RESPONSE_OK;
 RyderSerial.RESPONSE_SEND_INPUT = RESPONSE_SEND_INPUT;
 RyderSerial.RESPONSE_REJECTED = RESPONSE_REJECTED;
 RyderSerial.RESPONSE_LOCKED = RESPONSE_LOCKED;
+function enumerate_devices() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const devices = yield serialport_1.default.list();
+        const ryder_devices = devices.filter(deviceList => (deviceList.vendorId === '10c4' && deviceList.productId === 'ea60'));
+        if (!ryder_devices.length) {
+            path_1.resolve();
+        }
+        else {
+            return ryder_devices;
+        }
+    });
+}
 module.exports = RyderSerial;
+module.exports = enumerate_devices;

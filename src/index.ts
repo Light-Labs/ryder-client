@@ -2,6 +2,7 @@
 
 import SerialPort from 'serialport';
 import { default as Events } from "events";
+import { resolve } from "path"
 
 // responses
 const RESPONSE_OK = 1;                  // generic command ok/received
@@ -369,4 +370,15 @@ export default class RyderSerial extends Events.EventEmitter {
 
 }
 
+async function enumerate_devices() {
+  const devices = await SerialPort.list();
+  const ryder_devices = devices.filter(deviceList => (deviceList.vendorId === '10c4' && deviceList.productId === 'ea60'));
+  if (!ryder_devices.length) {
+    resolve();
+  } else {
+    return ryder_devices;
+  }
+}
+
 module.exports = RyderSerial
+module.exports = enumerate_devices
