@@ -335,7 +335,6 @@ export default class RyderSerial extends Events.EventEmitter {
       if (!this[train_symbol].length)
         return;
       if (!this.serial || !this.serial.isOpen) {
-        console.log("!this.serial || !this.serial.isOpen")
         // TODO: confirm `this[train_symbol][0]` (see issue #4 https://github.com/Light-Labs/ryderserial-proto/issues/4)
         const [, , reject] = this[train_symbol][0];
         this[train_symbol] = [];
@@ -369,31 +368,6 @@ export default class RyderSerial extends Events.EventEmitter {
     this[lock_symbol] = [];
   };
 
-
-  printState(): void {
-    let state: string;
-    switch (this[state_symbol]) {
-      case STATE_IDLE:
-        state = "STATE_IDLE";
-        break;
-      case STATE_READING:
-        state = "STATE_READING"
-        break;
-      case STATE_SENDING:
-        state = "STATE_SENDING"
-        break;
-      default:
-        state = "UNKNOWN"
-        break;
-    }
-    console.log(this)
-    console.log(state)
-    console.log(this[train_symbol])
-    console.log(this[lock_symbol])
-    console.log(this.serial)
-
-
-  }
 }
 
 module.exports = RyderSerial
