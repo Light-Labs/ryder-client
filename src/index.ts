@@ -1,6 +1,6 @@
 'use strict';
 
-import SerialPort, { OpenOptions } from 'serialport';
+import SerialPort from 'serialport';
 import { default as Events } from "events";
 
 // responses
@@ -43,24 +43,21 @@ const WATCHDOG_TIMEOUT = 5000;
 
 var id = 0;
 
-export interface RyderSerialOptions extends OpenOptions {
+export interface RyderSerialOptions extends SerialPort.OpenOptions {
   rejectOnLocked: any;
   reconnectTime: number,
   debug: boolean;
 }
 
 type TrainEntry = [
-  // data
-  string,
-  // resolve
-  (value?: any) => void,
-  // reject
-  (error?: any) => void,
-  // isEscapedByte
-  boolean,
-  // output buffer // TODO: does this need to be refactored to type `Buffer`?
-  string
+  string,                 // data
+  (value?: any) => void,  // resolve
+  (error?: any) => void,  // reject
+  boolean,                // isEscapedByte
+  // TODO: does this need to be refactored to type `Buffer`?
+  string                  // output buffer
 ]
+
 
 export default class RyderSerial extends Events.EventEmitter {
   id: number = 0;
@@ -100,16 +97,16 @@ export default class RyderSerial extends Events.EventEmitter {
   static RESPONSE_REJECTED = RESPONSE_REJECTED;
   static RESPONSE_LOCKED = RESPONSE_LOCKED;
 
-  constructor(port: string, options: RyderSerialOptions) {
+  constructor(port: string, options?: RyderSerialOptions) {
     super()
     this.id = id++;
     this.port = port;
-    this.options = options;
+    this.options = { rejectOnLocked: false, reconnectTime: 1000, debug: false, ...options }
     this[train_symbol] = [];
     this[state_symbol] = STATE_IDLE;
     this[lock_symbol] = [];
     this.closing = false;
-    this.open();
+    this.open(this.port, this.options);
   }
 
   serial_error(error: Error) {
@@ -124,6 +121,11 @@ export default class RyderSerial extends Events.EventEmitter {
   }
 
   serial_data(data: Uint8Array): boolean | void {
+    if (!(this instanceof RyderSerial)) {
+      console.log("THIS IS NOT INSTANCE")
+    } else {
+      console.log("THIS IS INSTANCE")
+    }
     this.options.debug && console.debug('data from Ryder', '0x' + data.toString());
     if (this[state_symbol] === STATE_IDLE)
       this.options.debug && console.warn('Got data from Ryder without asking, discarding.');
@@ -134,30 +136,35 @@ export default class RyderSerial extends Events.EventEmitter {
       var [, resolve, reject] = this[train_symbol][0]!;
       var offset = 0;
       if (this[state_symbol] === STATE_SENDING) {
+        console.log("STATE_SENDING")
         if (data[0] === RyderSerial.RESPONSE_LOCKED) {
+          console.log("!! WARNING: RESPONSE_LOCKED")
           if (this.options.rejectOnLocked) {
             var error = new Error('ERROR_LOCKED');
             for (var i = 0; i < this[train_symbol].length; ++i) {
-              const shifted_length = this[train_symbol].unshift();
-              var [, , reject] = this[train_symbol][shifted_length]
+              // const shifted_length = this[train_symbol].unshift();
+              var [, , reject] = this[train_symbol][i]
               reject(error);
             }
             this[state_symbol] = STATE_IDLE;
             this.emit('locked');
             return;
           }
-          else
-            return this.emit('locked');
+          else {
+            console.log("this.emit('locked')")
+            this.emit('locked');
+          }
         }
         if (data[0] === RESPONSE_OK || data[0] === RESPONSE_SEND_INPUT || data[0] === RESPONSE_REJECTED) {
           this[train_symbol].shift();
           resolve(data[0]);
           if (data.length > 1) {
             this.options.debug && console.debug('ryderserial more in buffer');
-            return this.serial_data(data.slice(1)); // more responses in the buffer
+            return this.serial_data.bind(this)(data.slice(1)); // more responses in the buffer
           }
           this[state_symbol] = STATE_IDLE;
-          return this.next();
+          this.next();
+          return
         }
         else if (data[0] === RESPONSE_OUTPUT) {
           this[state_symbol] = STATE_READING;
@@ -169,7 +176,7 @@ export default class RyderSerial extends Events.EventEmitter {
           this.options.debug && console.debug('waiting for user confirm on device');
           if (data.length > 1) {
             this.options.debug && console.debug('ryderserial more in buffer');
-            return this.serial_data(data.slice(1)); // more responses in the buffer
+            return this.serial_data.bind(this)(data.slice(1)); // more responses in the buffer
           }
           return;
         }
@@ -180,7 +187,7 @@ export default class RyderSerial extends Events.EventEmitter {
           this[state_symbol] = STATE_IDLE;
           if (data.length > 1) {
             this.options.debug && console.debug('ryderserial more in buffer');
-            return this.serial_data(data.slice(1)); // more responses in the buffer
+            return this.serial_data.bind(this)(data.slice(1)); // more responses in the buffer
           }
           return this.next();
         }
@@ -190,7 +197,7 @@ export default class RyderSerial extends Events.EventEmitter {
           this[state_symbol] = STATE_IDLE;
           if (data.length > 1) {
             this.options.debug && console.debug('ryderserial more in buffer');
-            return this.serial_data(data.slice(1)); // more responses in the buffer
+            return this.serial_data.bind(this)(data.slice(1)); // more responses in the buffer
           }
           return this.next();
         }
@@ -223,6 +230,7 @@ export default class RyderSerial extends Events.EventEmitter {
     if (!this[train_symbol][0])
       return;
     var [, , reject] = this[train_symbol][0]!;
+    console.log("reject")
     this[train_symbol].shift();
     reject(new Error('ERROR_WATCHDOG'));
     this[state_symbol] = STATE_IDLE;
@@ -245,12 +253,13 @@ export default class RyderSerial extends Events.EventEmitter {
     if (!this.options.reconnectTime)
       this.options.reconnectTime = 1000;
     this.serial = new SerialPort(this.port, this.options);
-    this.serial.on('data', this.serial_data);
+    this.serial.on('data', this.serial_data.bind(this));
     this.serial.on('error', error => {
+      console.log(`this.serial encountered an error: ${error}`)
       if (this.serial && !this.serial.isOpen) {
         clearInterval(this[reconnect_symbol]);
         // TODO: confirm that setInterval is using Node's implementation; and if it's not WHY
-        this[reconnect_symbol] = setInterval(this.open.bind(this), this.options.reconnectTime);
+        this[reconnect_symbol] = setInterval(this.open, this.options.reconnectTime);
         this.emit('failed', error);
       }
       this.serial_error.bind(this);
@@ -335,6 +344,7 @@ export default class RyderSerial extends Events.EventEmitter {
       if (!this[train_symbol].length)
         return;
       if (!this.serial || !this.serial.isOpen) {
+        console.log("!this.serial || !this.serial.isOpen")
         // TODO: confirm `this[train_symbol][0]` (see issue #4 https://github.com/Light-Labs/ryderserial-proto/issues/4)
         const [, , reject] = this[train_symbol][0];
         this[train_symbol] = [];
@@ -344,9 +354,11 @@ export default class RyderSerial extends Events.EventEmitter {
       this[state_symbol] = STATE_SENDING;
       try {
         this.options.debug && console.debug('send data to Ryder: ' + this[train_symbol][0][0].length + ' byte(s)', this[train_symbol][0][0]);
-        this.serial.write(this[train_symbol][0][0]);
+        const res = this.serial.write(this[train_symbol][0][0]);
+        console.log("this.serial.write returned ", res)
       }
       catch (error) {
+        this.options.debug && console.log(`encountered error while sending data: ${error}`)
         this.serial_error(error);
         return;
       }
@@ -368,6 +380,30 @@ export default class RyderSerial extends Events.EventEmitter {
   };
 
 
+  printState(): void {
+    let state: string;
+    switch (this[state_symbol]) {
+      case STATE_IDLE:
+        state = "STATE_IDLE";
+        break;
+      case STATE_READING:
+        state = "STATE_READING"
+        break;
+      case STATE_SENDING:
+        state = "STATE_SENDING"
+        break;
+      default:
+        state = "UNKNOWN"
+        break;
+    }
+    console.log(this)
+    console.log(state)
+    console.log(this[train_symbol])
+    console.log(this[lock_symbol])
+    console.log(this.serial)
+
+
+  }
 }
 
 module.exports = RyderSerial
