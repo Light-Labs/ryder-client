@@ -18,7 +18,7 @@ var response_errors: {
   [index: number]: string;
 } = {
   255: 'RESPONSE_ERROR_UNKNOWN_COMMAND',
-  254: 'RESPONSE_ERROR_NOT_INITIALISED',
+  254: 'RESPONSE_ERROR_NOT_INITIALIZED',
   253: 'RESPONSE_ERROR_MEMORY_ERROR',
   252: 'RESPONSE_ERROR_APP_DOMAIN_TOO_LONG',
   251: 'RESPONSE_ERROR_APP_DOMAIN_INVALID',
@@ -335,9 +335,8 @@ export default class RyderSerial extends Events.EventEmitter {
       if (!this[train_symbol].length)
         return;
       if (!this.serial || !this.serial.isOpen) {
-        // TODO: confirm `this[train_symbol][0]` (see issue #4 https://github.com/Light-Labs/ryderserial-proto/issues/4)
         const [, , reject] = this[train_symbol][0];
-        this[train_symbol] = [];
+        this.clear();
         reject(new Error('ERROR_DISCONNECTED'));
         return;
       }
