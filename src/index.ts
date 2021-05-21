@@ -1,8 +1,7 @@
 'use strict';
 
 import SerialPort from 'serialport';
-import { default as Events } from "events";
-import { resolve } from "path"
+import Events from "events";
 
 // responses
 const RESPONSE_OK = 1;                  // generic command ok/received
@@ -15,7 +14,7 @@ const RESPONSE_WAIT_USER_CONFIRM = 10;  // user has to confirm action
 const RESPONSE_LOCKED = 11;             // device is locked, send PIN
 
 // error responses
-var response_errors: {
+const response_errors: {
   [index: number]: string;
 } = {
   255: 'RESPONSE_ERROR_UNKNOWN_COMMAND',
@@ -42,7 +41,7 @@ const reconnect_symbol = Symbol('reconnect');
 
 const WATCHDOG_TIMEOUT = 5000;
 
-var id = 0;
+let id = 0;
 
 export interface RyderSerialOptions extends SerialPort.OpenOptions {
   rejectOnLocked: any;
@@ -61,7 +60,7 @@ type TrainEntry = [
 
 
 export default class RyderSerial extends Events.EventEmitter {
-  id: number = 0;
+  id: number;
   port: string;
   options: RyderSerialOptions;
   // TODO: refactor train into its own encapsulated class
@@ -110,10 +109,10 @@ export default class RyderSerial extends Events.EventEmitter {
     this.open(this.port, this.options);
   }
 
-  serial_error(error: Error) {
+  serial_error(error: Error): void {
     this.emit('error', error);
     if (this[train_symbol][0]) {
-      var [, , reject] = this[train_symbol].shift()!;
+      const [, , reject] = this[train_symbol].shift()!;
       reject(error);
     }
     clearTimeout(this[watchdog_symbol]);
@@ -121,7 +120,7 @@ export default class RyderSerial extends Events.EventEmitter {
     this.next();
   }
 
-  serial_data(data: Uint8Array): boolean | void {
+  serial_data(data: Uint8Array): void {
     this.options.debug && console.debug('data from Ryder', '0x' + Buffer.from(data).toString("hex"));
     if (this[state_symbol] === STATE_IDLE)
       this.options.debug && console.warn('Got data from Ryder without asking, discarding.');
@@ -129,11 +128,11 @@ export default class RyderSerial extends Events.EventEmitter {
       clearTimeout(this[watchdog_symbol]);
       if (!this[train_symbol][0])
         return;
-      var [, resolve, reject] = this[train_symbol][0]!;
-      var offset = 0;
+      const [, resolve, reject] = this[train_symbol][0]!;
+      let offset = 0;
       if (this[state_symbol] === STATE_SENDING) {
         if (data[0] === RyderSerial.RESPONSE_LOCKED) {
-          this.options.debug && console.debug("!! WARNING: RESPONSE_LOCKED -- RYDER DEVICE IS NEVER SUPPOSED TO EMIT THIS EVENT")
+          this.options.debug && console.debug("!! WARNING: RESPONSE_LOCKED -- RYDER DEVICE IS NEVER SUPPOSED TO EMIT THIS EVENT");
           if (this.options.rejectOnLocked) {
             const error = new Error('ERROR_LOCKED');
             for (let i = 0; i < this[train_symbol].length; ++i) {
@@ -219,10 +218,10 @@ export default class RyderSerial extends Events.EventEmitter {
     }
   }
 
-  serial_watchdog() {
+  serial_watchdog(): void {
     if (!this[train_symbol][0])
       return;
-    var [, , reject] = this[train_symbol][0]!;
+    const [, , reject] = this[train_symbol][0]!;
     this[train_symbol].shift();
     reject(new Error('ERROR_WATCHDOG'));
     this[state_symbol] = STATE_IDLE;
@@ -250,7 +249,6 @@ export default class RyderSerial extends Events.EventEmitter {
       console.log(`this.serial encountered an error: ${error}`)
       if (this.serial && !this.serial.isOpen) {
         clearInterval(this[reconnect_symbol]);
-        // TODO: confirm that setInterval is using Node's implementation; and if it's not WHY
         this[reconnect_symbol] = setInterval(this.open, this.options.reconnectTime);
         this.emit('failed', error);
       }
@@ -291,28 +289,19 @@ export default class RyderSerial extends Events.EventEmitter {
 
   lock(): Promise<void> {
     this.options.debug && console.debug('ryderserial lock');
-    if (!this[lock_symbol].length) {
-      // TODO: fix this[lock_symbol]... why is it holding 'false'?
-      // the line below used to read `this[lock_symbol].push(false);` confirm that the line below is safe?
-      this[lock_symbol].push(Promise.resolve);
-      return Promise.resolve();
-    }
-    return new Promise((resolve, reject) => {
-      this[lock_symbol].push(resolve)
-    });
+    this[lock_symbol].push(Promise.resolve);
+    return Promise.resolve();
   };
 
   unlock(): void {
     if (this[lock_symbol].length) {
       this.options.debug && console.debug('ryderserial unlock');
-      var resolve = this[lock_symbol].shift();
-      if (!resolve && this[lock_symbol].length)
-        resolve = this[lock_symbol].shift();
+      const resolve = this[lock_symbol].shift();
       resolve && resolve();
     }
   };
 
-  sequence(callback: (value: any) => Promise<any>) {
+  sequence(callback: (value: any) => Promise<any>): Promise<any> {
     if (typeof callback !== 'function' || callback.constructor.name !== 'AsyncFunction')
       return Promise.reject(new Error('ERROR_SEQUENCE_NOT_ASYNC'));
     return this.lock().then(callback).finally(this.unlock.bind(this));
@@ -356,28 +345,22 @@ export default class RyderSerial extends Events.EventEmitter {
     }
   };
 
-  clear() {
+  clear(): void {
     clearTimeout(this[watchdog_symbol]);
-    var error = new Error('ERROR_CLEARED');
     for (let i = 0; i < this[train_symbol].length; ++i)
-      this[train_symbol][i][2](error); // reject all pending
+      this[train_symbol][i][2](new Error('ERROR_CLEARED')); // reject all pending
     this[train_symbol] = [];
     this[state_symbol] = STATE_IDLE;
     for (let i = 0; i < this[lock_symbol].length; ++i)
       this[lock_symbol][i] && this[lock_symbol][i](); // release all locks
     this[lock_symbol] = [];
   };
-
 }
 
-async function enumerate_devices() {
+async function enumerate_devices(): Promise<SerialPort.PortInfo[]> {
   const devices = await SerialPort.list();
-  const ryder_devices = devices.filter(deviceList => (deviceList.vendorId === '10c4' && deviceList.productId === 'ea60'));
-  if (!ryder_devices.length) {
-    resolve();
-  } else {
-    return ryder_devices;
-  }
+  const ryder_devices = devices.filter(device => (device.vendorId === '10c4' && device.productId === 'ea60'));
+  return Promise.resolve(ryder_devices);
 }
 
 module.exports = RyderSerial
