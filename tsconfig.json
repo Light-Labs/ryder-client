@@ -6,13 +6,14 @@
 			"es6",
 		],
 		"declaration": true,
-		"declarationDir": "./types",
+		"declarationDir": "./dist/types",
 		"declarationMap": true,
 	},
 	"include": [
 		"./src/**/*"
 	],
 	"exclude": [
-		"node_modules"
+		"node_modules",
+		"dist"
 	]
 }
