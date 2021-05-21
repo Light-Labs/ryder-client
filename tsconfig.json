@@ -4,7 +4,10 @@
 		"outDir": "./dist",
 		"lib": [
 			"es6",
-		]
+		],
+		"declaration": true,
+		"declarationDir": "./types",
+		"declarationMap": true,
 	},
 	"include": [
 		"./src/**/*"
