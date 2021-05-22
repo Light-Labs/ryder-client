@@ -54,15 +54,16 @@ type TrainEntry = [
   (value?: any) => void,  // resolve
   (error?: any) => void,  // reject
   boolean,                // isEscapedByte
-  // TODO: does this need to be refactored to type `Buffer`?
+  // TODO: does this need to be refactored to type `Buffer`, `Array<Byte>`, or stay as `string`?
   string                  // output buffer
 ]
-
 
 export default class RyderSerial extends Events.EventEmitter {
   id: number;
   port: string;
   options: RyderSerialOptions;
+  closing: boolean;
+  serial?: SerialPort
   // TODO: refactor train into its own encapsulated class
   [train_symbol]: TrainEntry[]
   [state_symbol]: number;
@@ -70,33 +71,34 @@ export default class RyderSerial extends Events.EventEmitter {
   [watchdog_symbol]: NodeJS.Timeout
   [reconnect_symbol]: NodeJS.Timeout
 
-  closing: boolean;
-  serial?: SerialPort
 
-  static COMMAND_WAKE = 1;
-  static COMMAND_INFO = 2;
-  static COMMAND_SETUP = 10;
-  static COMMAND_RESTORE_FROM_SEED = 11;
-  static COMMAND_RESTORE_FROM_MNEMONIC = 12;
-  static COMMAND_ERASE = 13;
-  static COMMAND_EXPORT_OWNER_KEY = 18;
-  static COMMAND_EXPORT_OWNER_KEY_PRIVATE_KEY = 19;
-  static COMMAND_EXPORT_APP_KEY = 20;
-  static COMMAND_EXPORT_APP_KEY_PRIVATE_KEY = 21;
-  static COMMAND_EXPORT_OWNER_APP_KEY_PRIVATE_KEY = 23;
-  static COMMAND_EXPORT_PUBLIC_IDENTITIES = 30;
-  static COMMAND_EXPORT_PUBLIC_IDENTITY = 31;
+  // command constants
+  static readonly COMMAND_WAKE = 1;
+  static readonly COMMAND_INFO = 2;
+  static readonly COMMAND_SETUP = 10;
+  static readonly COMMAND_RESTORE_FROM_SEED = 11;
+  static readonly COMMAND_RESTORE_FROM_MNEMONIC = 12;
+  static readonly COMMAND_ERASE = 13;
+  static readonly COMMAND_EXPORT_OWNER_KEY = 18;
+  static readonly COMMAND_EXPORT_OWNER_KEY_PRIVATE_KEY = 19;
+  static readonly COMMAND_EXPORT_APP_KEY = 20;
+  static readonly COMMAND_EXPORT_APP_KEY_PRIVATE_KEY = 21;
+  static readonly COMMAND_EXPORT_OWNER_APP_KEY_PRIVATE_KEY = 23;
+  static readonly COMMAND_EXPORT_PUBLIC_IDENTITIES = 30;
+  static readonly COMMAND_EXPORT_PUBLIC_IDENTITY = 31;
+  // encrypt/decrypt commands
+  static readonly COMMAND_START_ENCRYPT = 40;
+  static readonly COMMAND_START_DECRYPT = 41;
+  // cancel command
+  static readonly COMMAND_CANCEL = 100;
+  // response constants
+  static readonly RESPONSE_OK = RESPONSE_OK;
+  static readonly RESPONSE_SEND_INPUT = RESPONSE_SEND_INPUT;
+  static readonly RESPONSE_REJECTED = RESPONSE_REJECTED;
+  static readonly RESPONSE_LOCKED = RESPONSE_LOCKED;
 
-  static COMMAND_START_ENCRYPT = 40;
-  static COMMAND_START_DECRYPT = 41;
-
-  static COMMAND_CANCEL = 100;
-
-  static RESPONSE_OK = RESPONSE_OK;
-  static RESPONSE_SEND_INPUT = RESPONSE_SEND_INPUT;
-  static RESPONSE_REJECTED = RESPONSE_REJECTED;
-  static RESPONSE_LOCKED = RESPONSE_LOCKED;
-
+  constructor(port: string);
+  constructor(port: string, options: RyderSerialOptions);
   constructor(port: string, options?: RyderSerialOptions) {
     super()
     this.id = id++;
@@ -106,7 +108,7 @@ export default class RyderSerial extends Events.EventEmitter {
     this[state_symbol] = STATE_IDLE;
     this[lock_symbol] = [];
     this.closing = false;
-    this.open(this.port, this.options);
+    this.open();
   }
 
   serial_error(error: Error): void {
@@ -172,8 +174,7 @@ export default class RyderSerial extends Events.EventEmitter {
           }
           return;
         }
-        else if (data[0] in response_errors) // error
-        {
+        else if (data[0] in response_errors) {  // error
           reject(new Error(response_errors[data[0]]));
           this[train_symbol].shift();
           this[state_symbol] = STATE_IDLE;
@@ -198,8 +199,7 @@ export default class RyderSerial extends Events.EventEmitter {
         this[watchdog_symbol] = setTimeout(this.serial_watchdog.bind(this), WATCHDOG_TIMEOUT);
         for (let i = offset; i < data.byteLength; ++i) {
           const b = data[i];
-          if (!this[train_symbol][0][3]) // previous was not escape byte
-          {
+          if (!this[train_symbol][0][3]) { // previous was not escape byte
             if (b === RESPONSE_ESC_SEQUENCE) {
               this[train_symbol][0][3] = true; // esc byte
               continue; // skip esc byte
@@ -228,6 +228,9 @@ export default class RyderSerial extends Events.EventEmitter {
     this.next();
   }
 
+  open(): void;
+  open(port: string): void;
+  open(port: string, options: RyderSerialOptions): void;
   open(port?: string, options?: RyderSerialOptions): void {
     this.options.debug && console.debug('ryderserial attempt open');
     this.closing = false;
@@ -246,7 +249,7 @@ export default class RyderSerial extends Events.EventEmitter {
     this.serial = new SerialPort(this.port, this.options);
     this.serial.on('data', this.serial_data.bind(this));
     this.serial.on('error', error => {
-      console.log(`this.serial encountered an error: ${error}`)
+      this.options.debug && console.warn(`this.serial encountered an error: ${error}`);
       if (this.serial && !this.serial.isOpen) {
         clearInterval(this[reconnect_symbol]);
         this[reconnect_symbol] = setInterval(this.open, this.options.reconnectTime);
@@ -263,10 +266,6 @@ export default class RyderSerial extends Events.EventEmitter {
     });
     this.serial.on('open', () => {
       this.options.debug && console.debug('ryderserial open');
-      // reset or keep?
-      // this[train_symbol] = [];
-      // this[state_symbol] = STATE_IDLE;
-      // this[lock_symbol] = [];
       clearInterval(this[reconnect_symbol]);
       this.emit('open');
       this.next();
@@ -307,6 +306,10 @@ export default class RyderSerial extends Events.EventEmitter {
     return this.lock().then(callback).finally(this.unlock.bind(this));
   };
 
+  send(data: string): Promise<void>;
+  send(data: number): Promise<void>;
+  send(data: string, prepend: boolean): Promise<void>;
+  send(data: number, prepend: boolean): Promise<void>;
   send(data: string | number, prepend?: boolean): Promise<void> {
     if (!this.serial || !this.serial.isOpen)
       return Promise.reject(new Error('ERROR_DISCONNECTED'));
