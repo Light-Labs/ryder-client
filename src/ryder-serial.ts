@@ -169,7 +169,7 @@ export default class RyderSerial extends Events.EventEmitter {
       const [, resolve, reject] = this[train_symbol][0]!;
       let offset = 0;
       if (this[state_symbol] === State.SENDING) {
-        this.log(LogLevel.DEBUG, "status == SENDING...");
+        this.log(LogLevel.DEBUG, "-> SENDING... ryderserial is trying to send data");
         if (data[0] === RESPONSE_LOCKED) {
           this.log(LogLevel.WARN, "!! WARNING: RESPONSE_LOCKED -- RYDER DEVICE IS NEVER SUPPOSED TO EMIT THIS EVENT");
           if (this.options.reject_on_locked) {
@@ -187,7 +187,7 @@ export default class RyderSerial extends Events.EventEmitter {
           }
         }
         if (data[0] === RESPONSE_OK || data[0] === RESPONSE_SEND_INPUT || data[0] === RESPONSE_REJECTED) {
-          this.log(LogLevel.DEBUG, "data[0] is RESPONSE_OK || RESPONSE_SEND_INPUT || RESPONSE_REJECTED");
+          this.log(LogLevel.DEBUG, "---> (while sending): RESPONSE_OK or RESPONSE_SEND_INPUT or RESPONSE_REJECTED");
           this[train_symbol].shift();
           resolve(data[0]);
           if (data.length > 1) {
@@ -199,7 +199,7 @@ export default class RyderSerial extends Events.EventEmitter {
           return;
         }
         else if (data[0] === RESPONSE_OUTPUT) {
-          this.log(LogLevel.INFO, "-> IDLE... ryderserial is waiting for next task.");
+          this.log(LogLevel.DEBUG, "---> (while sending): RESPONSE_OUTPUT... ryderserial is ready to read");
           this[state_symbol] = State.READING;
           ++offset;
         }
@@ -219,6 +219,7 @@ export default class RyderSerial extends Events.EventEmitter {
               ? response_errors[data[0]] // known error
               : 'ERROR_UNKNOWN_RESPONSE' // unknown error
           );
+          this.log(LogLevel.ERROR, "---> (while sending): ryderserial ran into an error", { error });
           reject(error);
           this[train_symbol].shift();
           this[state_symbol] = State.IDLE;
@@ -231,7 +232,7 @@ export default class RyderSerial extends Events.EventEmitter {
         }
       }
       if (this[state_symbol] === State.READING) {
-        this.log(LogLevel.INFO, "READING... ryderserial is reading data");
+        this.log(LogLevel.INFO, "---> (during response_output): READING... ryderserial is trying to read data");
         this[watchdog_symbol] = setTimeout(this.serial_watchdog.bind(this), WATCHDOG_TIMEOUT);
         for (let i = offset; i < data.byteLength; ++i) {
           const b = data[i];
@@ -241,6 +242,7 @@ export default class RyderSerial extends Events.EventEmitter {
               continue; // skip esc byte
             }
             else if (b === RESPONSE_OUTPUT_END) {
+              this.log(LogLevel.DEBUG, "---> READING SUCCESS resolving output buffer", { output_buffer: "0x" + Buffer.from(this[train_symbol][0][4]).toString("hex") });
               resolve(this[train_symbol][0][4]); // resolve output buffer (string)
               this[train_symbol].shift();
               this[state_symbol] = State.IDLE;
@@ -432,7 +434,7 @@ export default class RyderSerial extends Events.EventEmitter {
    */
   private next(): void {
     if (this[state_symbol] === State.IDLE && this[train_symbol].length) {
-      this.log(LogLevel.INFO, " -> NEXT... ryderserial is moving to next task");
+      this.log(LogLevel.INFO, "-> NEXT... ryderserial is moving to next task");
       if (!(this.serial?.isOpen)) { // `this.serial` is undefined or not open
         this.log(LogLevel.ERROR, "ryderserial connection to port has shut down");
         const [, , reject] = this[train_symbol][0];
