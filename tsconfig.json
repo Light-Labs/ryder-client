@@ -1,19 +1,12 @@
 {
-	"extends": "@tsconfig/recommended/tsconfig.json",
-	"compilerOptions": {
-		"outDir": "./dist",
-		"lib": [
-			"es6",
-		],
-		"declaration": true,
-		"declarationDir": "./dist/types",
-		"declarationMap": true,
-	},
-	"include": [
-		"./src/**/*"
-	],
-	"exclude": [
-		"node_modules",
-		"./dist/**/*"
-	]
+    "extends": "@tsconfig/recommended/tsconfig.json",
+    "compilerOptions": {
+        "outDir": "./dist",
+        "lib": ["es6"],
+        "declaration": true,
+        "declarationDir": "./dist/types",
+        "declarationMap": true
+    },
+    "include": ["./src/**/*"],
+    "exclude": ["node_modules", "./dist/**/*"]
 }
