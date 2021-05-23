@@ -1,6 +1,6 @@
 import { assertNever } from "./helpers";
 
-export const enum LogLevel {
+export enum LogLevel {
   SILENT = "__SILENT__",  // priority negative (will not log)
   DEBUG = "debug",        // priority 0 (lowest)
   INFO = "info",          // priority 1
@@ -19,7 +19,7 @@ export interface Logger {
 export function make_logger(cursor: string): Logger {
   return (level, message, extra?) => {
     if (level !== LogLevel.SILENT) {
-      const cursor_message = " -> " + cursor + " " + level + "\t"
+      const cursor_message = "> " + cursor + " " + level + "\t"
       if (extra) {
         console[level](cursor_message, message, extra);
       } else {
