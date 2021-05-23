@@ -9,11 +9,7 @@ export enum LogLevel {
 }
 
 export interface Logger {
-    (
-        level: LogLevel,
-        message: string | string[],
-        extra?: Record<string, unknown>
-    ): void;
+    (level: LogLevel, message: string | string[], extra?: Record<string, unknown>): void;
 }
 
 export function make_logger(cursor: string): Logger {
