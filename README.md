@@ -19,7 +19,7 @@ const RyderSerial = require('ryderserial-proto');
 let ryder_port = '';
 
 const options = {
-	reconnectTime: 1000,	// how long to wait before reconnect (ms).
+	reconnect_time: 1000,	// how long to wait before reconnect (ms).
 	debug: true				// enable debug output to stdout.
 	};
 

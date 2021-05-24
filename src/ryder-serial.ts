@@ -47,7 +47,15 @@ let id = 0;
 export interface Options extends SerialPort.OpenOptions {
     log_level?: LogLevel;
     logger?: Logger;
+    /**
+     * @deprecated  as of **v0.0.2** please use `reject_on_locked` instead
+     */
+    rejectOnLocked?: boolean;
     reject_on_locked?: boolean;
+    /**
+     * @deprecated  as of **v0.0.2** please use `reconnect_time` instead
+     */
+    reconnectTime?: number;
     reconnect_time?: number;
     debug?: boolean;
 }
@@ -129,6 +137,14 @@ export default class RyderSerial extends Events.EventEmitter {
         this.options = options || {};
         if (this.options.debug && !this.options.log_level) {
             this.#log_level = LogLevel.DEBUG;
+        }
+        // to support now-deprecated `options.reconnectTime`
+        if (!this.options.reconnect_time && this.options.reconnectTime) {
+            this.options.reconnect_time = this.options.reconnectTime;
+        }
+        // to support now-deprecated `options.rejectOnLocked`
+        if (!this.options.reject_on_locked && this.options.rejectOnLocked) {
+            this.options.reject_on_locked = this.options.rejectOnLocked;
         }
         this[train_symbol] = [];
         this[state_symbol] = State.IDLE;
@@ -319,9 +335,15 @@ export default class RyderSerial extends Events.EventEmitter {
         }
         this.port = port || this.port;
         this.options = options || this.options || {};
-        if (!this.options.baudRate) this.options.baudRate = 115_200;
-        if (!this.options.lock) this.options.lock = true;
-        if (!this.options.reconnect_time) this.options.reconnect_time = 1_000;
+        if (!this.options.baudRate) {
+            this.options.baudRate = 115_200;
+        }
+        if (!this.options.lock) {
+            this.options.lock = true;
+        }
+        if (!this.options.reconnect_time) {
+            this.options.reconnect_time = 1_000;
+        }
         this.serial = new SerialPort(this.port, this.options);
         this.serial.on("data", this.serial_data.bind(this));
         this.serial.on("error", error => {
