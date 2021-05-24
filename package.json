@@ -1,22 +1,41 @@
 {
-  "name": "ryderserial-proto",
-  "version": "0.0.1",
-  "description": "",
-  "main": "src/index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Light-Labs/ryderserial-proto.git"
-  },
-  "author": "Marvin Janssen",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/Light-Labs/ryderserial-proto/issues"
-  },
-  "homepage": "https://github.com/Light-Labs/ryderserial-proto#readme",
-  "dependencies": {
-    "serialport": "^9.0.6"
-  }
+    "name": "ryderserial-proto",
+    "version": "0.0.2",
+    "description": "",
+    "main": "dist/index.js",
+    "types": "dist/types/index.d.ts",
+    "scripts": {
+        "prepare": "npm run lint && npm run build",
+        "build": "tsc",
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "prettier": "prettier --write .",
+        "lint": "prettier --check . && eslint . --ext .ts && cspell '**/*' "
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Light-Labs/ryderserial-proto.git"
+    },
+    "author": "Marvin Janssen",
+    "contributors": [
+        "Marvin Janssen",
+        "Chaz Kiker <chazkiker@gmail.com> (https://github.com/chazkiker2)"
+    ],
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/Light-Labs/ryderserial-proto/issues"
+    },
+    "homepage": "https://github.com/Light-Labs/ryderserial-proto#readme",
+    "dependencies": {
+        "serialport": "^9.0.6"
+    },
+    "devDependencies": {
+        "@tsconfig/recommended": "^1.0.1",
+        "@types/node": "^15.3.0",
+        "@types/serialport": "^8.0.1",
+        "@typescript-eslint/eslint-plugin": "^4.24.0",
+        "@typescript-eslint/parser": "^4.24.0",
+        "eslint": "^7.27.0",
+        "prettier": "2.3.0",
+        "typescript": "^4.2.4"
+    }
 }

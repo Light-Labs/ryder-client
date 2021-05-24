@@ -19,7 +19,7 @@ const RyderSerial = require('ryderserial-proto');
 let ryder_port = '';
 
 const options = {
-	reconnectTime: 1000,	// how long to wait before reconnect (ms).
+	reconnect_time: 1000,	// how long to wait before reconnect (ms).
 	debug: true				// enable debug output to stdout.
 	};
 
@@ -78,7 +78,7 @@ function request_app_private_key(identity_number,app_domain)
 		if (response === RyderSerial.RESPONSE_REJECTED)
 			return false; // user cancel
 		var split = response.split(',');
-		var result = 
+		var result =
 			{
 				app_domain: split[0].substr(2),
 				app_public_key: split[1],
@@ -138,32 +138,28 @@ Sending commands and checking responses should be done by using the built-in con
 
 Wakes the device, puts it in high-power mode and turns on the display. (The same as tapping the screen.)
 
-
 `RyderSerial.COMMAND_INFO`
 
 Returns some information about the device in the following format:
 
 `ryder[VERSION_MAJOR][VERSION_MINOR][VERSION_PATCH][MODE][INITIALISED]`
 
- Where the 5 bytes spell `"ryder"` in ASCII, followed by 3 version bytes, a mode byte, and a byte that signifies whether the Ryder is initialised or not.
+Where the 5 bytes spell `"ryder"` in ASCII, followed by 3 version bytes, a mode byte, and a byte that signifies whether the Ryder is initialised or not.
 
- Example:
+Example:
 
- ```JS
+```JS
 const info = await argv._ryder_serial.send(RyderSerial.COMMAND_INFO);
 const version = `${info.charCodeAt(5)}.${info.charCodeAt(6)}.${info.charCodeAt(7)}`;
- ```
-
+```
 
 `RyderSerial.COMMAND_SETUP`
 
 Triggers the setup prompt on the Ryder device.
 
-
 `RyderSerial.COMMAND_RESTORE_FROM_SEED`
 
-*Not implemented at this time.*
-
+_Not implemented at this time._
 
 `RyderSerial.COMMAND_RESTORE_FROM_MNEMONIC`
 
@@ -179,18 +175,17 @@ if (response === RyderSerial.RESPONSE_SEND_INPUT)
 	}
 ```
 
-
 `RyderSerial.COMMAND_ERASE`
 
 Triggers the erase flow on the Ryder.
 
 `RyderSerial.COMMAND_EXPORT_OWNER_KEY`
 
-*Not implemented at this time.*
+_Not implemented at this time._
 
 `RyderSerial.COMMAND_EXPORT_OWNER_KEY_PRIVATE_KEY`
 
-*Not implemented at this time.*
+_Not implemented at this time._
 
 `RyderSerial.COMMAND_EXPORT_APP_KEY`
 
@@ -221,10 +216,9 @@ The same as `RyderSerial.COMMAND_EXPORT_APP_KEY` but the app private key is appe
 
 The same as `RyderSerial.COMMAND_EXPORT_APP_KEY` but the app private key and the owner private key are appended to the response.
 
-
 `RyderSerial.COMMAND_EXPORT_PUBLIC_IDENTITIES`
 
-*Not implemented at this time.*
+_Not implemented at this time._
 
 `RyderSerial.COMMAND_EXPORT_PUBLIC_IDENTITY`
 
@@ -238,19 +232,17 @@ const data = [RyderSerial.COMMAND_EXPORT_PUBLIC_IDENTITY,0];
 const identity = await ryder_serial.send(data);
 ```
 
-
 `RyderSerial.COMMAND_START_ENCRYPT`
 
-*Not implemented at this time.*
+_Not implemented at this time._
 
 `RyderSerial.COMMAND_START_DECRYPT`
 
-*Not implemented at this time.*
+_Not implemented at this time._
 
 `RyderSerial.COMMAND_CANCEL`
 
 Cancels a user prompt.
-
 
 **Responses**
 
@@ -275,4 +267,3 @@ The Ryder is currently locked and has to be unlocked by entering a PIN first. Th
 1. Create a branch with the naming convention `first-name/feature-name`.
 2. Open a pull request and request a review of a fellow Pioneer.
 3. Squash and merge is preferred.
-
