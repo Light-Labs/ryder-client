@@ -9,7 +9,7 @@
         "build": "tsc",
         "test": "echo \"Error: no test specified\" && exit 1",
         "prettier": "prettier --write .",
-        "lint": "prettier --check . && eslint . --ext .ts && cspell '**/*' "
+        "lint": "prettier --check . && eslint . --ext .ts --quiet"
     },
     "repository": {
         "type": "git",
