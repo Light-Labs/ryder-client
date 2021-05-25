@@ -26,9 +26,9 @@
     },
     "homepage": "https://github.com/Light-Labs/ryderserial-proto#readme",
     "dependencies": {
-        "serialport": "^9.0.6",
         "@types/node": "^15.3.0",
-        "@types/serialport": "^8.0.1"
+        "@types/serialport": "^8.0.1",
+        "serialport": "^9.0.6"
     },
     "devDependencies": {
         "@tsconfig/recommended": "^1.0.1",
