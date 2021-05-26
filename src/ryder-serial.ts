@@ -180,7 +180,6 @@ export default class RyderSerial extends Events.EventEmitter {
         this.log(LogLevel.DEBUG, "data from Ryder", {
             data: "0x" + Buffer.from(data).toString("hex"),
         });
-
         if (this[state_symbol] === State.IDLE) {
             this.log(LogLevel.WARN, "Got data from Ryder without asking, discarding.");
         } else {
@@ -471,7 +470,7 @@ export default class RyderSerial extends Events.EventEmitter {
     public send(
         data: string | string[] | number | number[] | Uint8Array | Buffer,
         prepend?: boolean
-    ): Promise<string> {
+    ): Promise<string | number> {
         // if `this.serial` is `undefined` or NOT open, then we do not have a connection
         if (!this.serial?.isOpen) {
             // reject because we do not have a connection
