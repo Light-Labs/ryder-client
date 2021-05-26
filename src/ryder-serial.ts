@@ -468,7 +468,7 @@ export default class RyderSerial extends Events.EventEmitter {
      */
     // TODO: add support for data being of type `buffer`, `Array<T>`
     // TODO: Buffer | TypedArray | Array | number | string
-    public send(data: string | string[] | number | number[] | Uint8Array | Buffer, prepend?: boolean): Promise<string> {
+    public send(data: string | string[] | number | number[] | Uint8Array | Buffer, prepend?: boolean): Promise<string | number> {
 
         // if `this.serial` is `undefined` or NOT open, then we do not have a connection
         if (!this.serial?.isOpen) {
