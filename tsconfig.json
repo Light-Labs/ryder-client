@@ -3,6 +3,7 @@
     "compilerOptions": {
         "outDir": "./dist",
         "lib": ["es6"],
+        "esModuleInterop": true,
         // Emit declarations
         "declaration": true,
         "declarationDir": "./dist/types",

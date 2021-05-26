@@ -180,7 +180,6 @@ export default class RyderSerial extends Events.EventEmitter {
         this.log(LogLevel.DEBUG, "data from Ryder", {
             data: "0x" + Buffer.from(data).toString("hex"),
         });
-
         if (this[state_symbol] === State.IDLE) {
             this.log(LogLevel.WARN, "Got data from Ryder without asking, discarding.");
         } else {
@@ -468,8 +467,10 @@ export default class RyderSerial extends Events.EventEmitter {
      */
     // TODO: add support for data being of type `buffer`, `Array<T>`
     // TODO: Buffer | TypedArray | Array | number | string
-    public send(data: string | string[] | number | number[] | Uint8Array | Buffer, prepend?: boolean): Promise<string | number> {
-
+    public send(
+        data: string | string[] | number | number[] | Uint8Array | Buffer,
+        prepend?: boolean
+    ): Promise<string | number> {
         // if `this.serial` is `undefined` or NOT open, then we do not have a connection
         if (!this.serial?.isOpen) {
             // reject because we do not have a connection
@@ -478,25 +479,22 @@ export default class RyderSerial extends Events.EventEmitter {
         let narrowed_data: string[];
         if (typeof data === "string") {
             narrowed_data = [data];
-        }
-        else if (typeof data === "number") {
-            narrowed_data = [String.fromCharCode(data)]
-        }
-        else if (data instanceof Uint8Array) {
-            narrowed_data = []
+        } else if (typeof data === "number") {
+            narrowed_data = [String.fromCharCode(data)];
+        } else if (data instanceof Uint8Array) {
+            narrowed_data = [];
             data.forEach(function (char) {
                 narrowed_data.push(String.fromCharCode(char));
             });
-        }
-        else {
+        } else {
             narrowed_data = [];
             data.forEach(function (el: string | number) {
                 narrowed_data.push(typeof el === "number" ? String.fromCharCode(el) : el);
-            })
+            });
         }
 
         this.log(LogLevel.DEBUG, "queue data for Ryder: " + narrowed_data.length + " byte(s)", {
-            bytes: narrowed_data.map(el => Buffer.from(el).toString("hex"))
+            bytes: narrowed_data.map(el => Buffer.from(el).toString("hex")),
         });
         return new Promise((resolve, reject) => {
             const c: TrainEntry = [narrowed_data, resolve, reject, false, ""];
@@ -528,10 +526,10 @@ export default class RyderSerial extends Events.EventEmitter {
                     LogLevel.DEBUG,
                     "send data to Ryder: " + this[train_symbol][0][0].length + " byte(s)",
                     {
-                        bytes: display_hex(this[train_symbol][0][0])
+                        bytes: display_hex(this[train_symbol][0][0]),
                     }
                 );
-                this.serial.write(Buffer.from(this[train_symbol][0][0].join('')));
+                this.serial.write(Buffer.from(this[train_symbol][0][0].join("")));
             } catch (error) {
                 this.log(LogLevel.ERROR, `encountered error while sending data: ${error}`);
                 this.serial_error(error);
