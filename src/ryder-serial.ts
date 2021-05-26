@@ -44,6 +44,11 @@ const WATCHDOG_TIMEOUT = 5000;
 
 let id = 0;
 
+// very hackish, we should find a better fix.
+function display_hex(array: string[]) {
+    return array.map(el => Buffer.from(el).toString("hex"));
+}
+
 export interface Options extends SerialPort.OpenOptions {
     log_level?: LogLevel;
     logger?: Logger;
@@ -61,7 +66,7 @@ export interface Options extends SerialPort.OpenOptions {
 }
 
 type TrainEntry = [
-    string, // TrainEntry[0] -- data
+    string[], // TrainEntry[0] -- data
     (value?: any) => void, // TrainEntry[1] -- resolve function
     (error?: Error) => void, // TrainEntry[2] -- reject function
     boolean, // TrainEntry[3] -- isEscapedByte
@@ -345,7 +350,10 @@ export default class RyderSerial extends Events.EventEmitter {
             this.options.reconnect_time = 1_000;
         }
         this.serial = new SerialPort(this.port, this.options);
-        this.serial.on("data", this.serial_data.bind(this));
+        this.serial.on("data", data => {
+            this.log(LogLevel.DEBUG, "this.serial ran into 'data' event");
+            this.serial_data.bind(this)(data);
+        });
         this.serial.on("error", error => {
             this.log(LogLevel.WARN, `\`this.serial\` encountered an error: ${error}`);
             if (this.serial && !this.serial.isOpen) {
@@ -459,20 +467,39 @@ export default class RyderSerial extends Events.EventEmitter {
      * @returns A `Promise` that resolves with response from the Ryder device (includes waiting for a possible user confirm). The returned data may be a single byte (see static members of this class) and/or resulting data, like an identity or app key.
      */
     // TODO: add support for data being of type `buffer`, `Array<T>`
-    public send(data: string | number, prepend?: boolean): Promise<string> {
+    // TODO: Buffer | TypedArray | Array | number | string
+    public send(data: string | string[] | number | number[] | Uint8Array | Buffer, prepend?: boolean): Promise<string | number> {
+
         // if `this.serial` is `undefined` or NOT open, then we do not have a connection
         if (!this.serial?.isOpen) {
             // reject because we do not have a connection
             return Promise.reject(new Error("ERROR_DISCONNECTED"));
         }
-        if (typeof data === "number") {
-            data = String.fromCharCode(data);
+        let narrowed_data: string[];
+        if (typeof data === "string") {
+            narrowed_data = [data];
         }
-        this.log(LogLevel.DEBUG, "queue data for Ryder: " + data.length + " byte(s)", {
-            bytes: Buffer.from(data).toString("hex"),
+        else if (typeof data === "number") {
+            narrowed_data = [String.fromCharCode(data)]
+        }
+        else if (data instanceof Uint8Array) {
+            narrowed_data = []
+            data.forEach(function (char) {
+                narrowed_data.push(String.fromCharCode(char));
+            });
+        }
+        else {
+            narrowed_data = [];
+            data.forEach(function (el: string | number) {
+                narrowed_data.push(typeof el === "number" ? String.fromCharCode(el) : el);
+            })
+        }
+
+        this.log(LogLevel.DEBUG, "queue data for Ryder: " + narrowed_data.length + " byte(s)", {
+            bytes: narrowed_data.map(el => Buffer.from(el).toString("hex"))
         });
         return new Promise((resolve, reject) => {
-            const c: TrainEntry = [data as string, resolve, reject, false, ""];
+            const c: TrainEntry = [narrowed_data, resolve, reject, false, ""];
             prepend ? this[train_symbol].unshift(c) : this[train_symbol].push(c);
             this.next();
         });
@@ -501,10 +528,10 @@ export default class RyderSerial extends Events.EventEmitter {
                     LogLevel.DEBUG,
                     "send data to Ryder: " + this[train_symbol][0][0].length + " byte(s)",
                     {
-                        bytes: Buffer.from(this[train_symbol][0][0]).toString("hex"),
+                        bytes: display_hex(this[train_symbol][0][0])
                     }
                 );
-                this.serial.write(this[train_symbol][0][0]);
+                this.serial.write(Buffer.from(this[train_symbol][0][0].join('')));
             } catch (error) {
                 this.log(LogLevel.ERROR, `encountered error while sending data: ${error}`);
                 this.serial_error(error);
