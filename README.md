@@ -1,6 +1,9 @@
 # RyderSerial
 
-RyderSerial is a library to facilitate communications between an application and Ryder device. It is written in JavaScript. It is built in an async/await pattern and makes extensive use of Promises. It does not currently feature command-specific methods, this would be a useful future addition. (E.g. `ryder_serial.info()` instead of `ryder_serial.send(RyderSerial.COMMAND_INFO)`.)
+[![npm version](https://img.shields.io/npm/v/@lightlabs/ryderserial-proto.svg?style=flat)](https://www.npmjs.com/package/@lightlabs/ryderserial-proto)
+
+RyderSerial is a library to facilitate communications between an application and Ryder device. It is written in TypeScript and types are bundled into the package on installation.\
+It is built in an async/await pattern and makes extensive use of Promises. It does not currently feature command-specific methods, this would be a useful future addition. (E.g. `ryder_serial.info()` instead of `ryder_serial.send(RyderSerial.COMMAND_INFO)`.)
 
 Responses are read in the order the commands are passed in. Responses are also delayed for as long as it takes for the command to be processed. It means that commands which require user confirmation (like a key export) will only be resolved after the user interacts with the Ryder. A watchdog makes sure that a Promise does not stay pending forever but it will wait when the Ryder signals it is waiting for a user interaction.
 
@@ -9,50 +12,55 @@ Responses are read in the order the commands are passed in. Responses are also d
 Install:
 
 ```bash
-npm install git+https://github.com/Light-Labs/ryderserial-proto.git
+npm install @lightlabs/ryderserial-proto
 ```
 
 Construct and query:
 
 ```JS
-const RyderSerial = require('ryderserial-proto');
+const RyderSerial = require('@lightlabs/ryderserial-proto');
 let ryder_port = '';
 
 const options = {
-	reconnect_time: 1000,	// how long to wait before reconnect (ms).
-	debug: true				// enable debug output to stdout.
-	};
+	// how long to wait before reconnect (ms).
+	reconnect_time: 1000,
+	// enable debug output to stdout.
+	debug: true
+};
 
 initialize().then(() =>
 {
 	const ryder_serial = new RyderSerial(ryder_port, options);
-	ryder_serial.on('open', async ()=>
+	ryder_serial.on('open', async () =>
 	{
-	const response = await ryder_serial.send(RyderSerial.COMMAND_INFO);
-	console.log(response);
+		const response = await ryder_serial.send(RyderSerial.COMMAND_INFO);
+		console.log(response);
 	});
 });
 
 async function initialize()
 	{
 		if(!ryder_port)
-		{
-		const devices = await RyderSerial.enumerate_devices();
-			if(devices)
 			{
+			const devices = await RyderSerial.enumerate_devices();
+			if(devices)
+				{
 				console.log(devices)
 				if(devices.length === 1)
-				{
-				ryder_port = devices[0].path;
-				}else if(devices.length > 1)
-				{
-				//If more than one device is found port path must be specified
-				console.debug('More than one device found path must be specified');
+					{
+					ryder_port = devices[0].path;
+					}
+				else if (devices.length > 1)
+					{
+					// If more than one device is found, then port path must be specified
+					console.debug('More than one device found: path must be specified');
+					}
 				}
-			}else{
+			else
+				{
 				console.log('No device found');
 				}
-		}
+			}
 	}
 ```
 
