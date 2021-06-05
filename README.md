@@ -22,40 +22,45 @@ const RyderSerial = require('@lightlabs/ryderserial-proto');
 let ryder_port = '';
 
 const options = {
-	reconnect_time: 1000,	// how long to wait before reconnect (ms).
-	debug: true				// enable debug output to stdout.
-	};
+	// how long to wait before reconnect (ms).
+	reconnect_time: 1000,
+	// enable debug output to stdout.
+	debug: true
+};
 
 initialize().then(() =>
 {
 	const ryder_serial = new RyderSerial(ryder_port, options);
-	ryder_serial.on('open', async ()=>
+	ryder_serial.on('open', async () =>
 	{
-	const response = await ryder_serial.send(RyderSerial.COMMAND_INFO);
-	console.log(response);
+		const response = await ryder_serial.send(RyderSerial.COMMAND_INFO);
+		console.log(response);
 	});
 });
 
 async function initialize()
 	{
 		if(!ryder_port)
-		{
-		const devices = await RyderSerial.enumerate_devices();
-			if(devices)
 			{
+			const devices = await RyderSerial.enumerate_devices();
+			if(devices)
+				{
 				console.log(devices)
 				if(devices.length === 1)
-				{
-				ryder_port = devices[0].path;
-				}else if(devices.length > 1)
-				{
-				//If more than one device is found port path must be specified
-				console.debug('More than one device found path must be specified');
+					{
+					ryder_port = devices[0].path;
+					}
+				else if (devices.length > 1)
+					{
+					// If more than one device is found, then port path must be specified
+					console.debug('More than one device found: path must be specified');
+					}
 				}
-			}else{
+			else
+				{
 				console.log('No device found');
 				}
-		}
+			}
 	}
 ```
 
