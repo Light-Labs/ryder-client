@@ -3,15 +3,30 @@ import Events from "events"; // https://nodejs.org/api/events.html#events_class_
 import { LogLevel, Logger, make_logger, log_security_level } from "../logging";
 import Train, { Entry } from "./sequencer";
 
-// responses
-const RESPONSE_OK = 1; // generic command ok/received
-const RESPONSE_SEND_INPUT = 2; // command received, send input
-const RESPONSE_REJECTED = 3; // user input rejected
-const RESPONSE_OUTPUT = 4; // sending output
-const RESPONSE_OUTPUT_END = 5; // end of output
-const RESPONSE_ESC_SEQUENCE = 6; // output esc sequence
-const RESPONSE_WAIT_USER_CONFIRM = 10; // user has to confirm action
-const RESPONSE_LOCKED = 11; // device is locked, send PIN
+// response status
+export enum Status {
+    // generic command ok/received
+    RESPONSE_OK,
+    // command received, send input
+    RESPONSE_SEND_INPUT,
+    // user input rejected
+    RESPONSE_REJECTED,
+    // sending output
+    RESPONSE_OUTPUT,
+    // end of output
+    RESPONSE_OUTPUT_END,
+    // output esc sequence
+    RESPONSE_ESC_SEQUENCE,
+    // user has to confirm action
+    RESPONSE_WAIT_USER_CONFIRM,
+    // device is locked, send PIN
+    RESPONSE_LOCKED,
+}
+
+export interface Response {
+    status: Status;
+    data?: string | number | string[] | number[];
+}
 
 // error responses
 const response_errors: Record<number, string> = {
@@ -111,10 +126,10 @@ export default class RyderSerial extends Events.EventEmitter {
     static readonly COMMAND_CANCEL = 100;
 
     // response constants
-    static readonly RESPONSE_OK = RESPONSE_OK;
-    static readonly RESPONSE_SEND_INPUT = RESPONSE_SEND_INPUT;
-    static readonly RESPONSE_REJECTED = RESPONSE_REJECTED;
-    static readonly RESPONSE_LOCKED = RESPONSE_LOCKED;
+    static readonly RESPONSE_OK = Status.RESPONSE_OK;
+    static readonly RESPONSE_SEND_INPUT = Status.RESPONSE_SEND_INPUT;
+    static readonly RESPONSE_REJECTED = Status.RESPONSE_REJECTED;
+    static readonly RESPONSE_LOCKED = Status.RESPONSE_LOCKED;
 
     /**
      * Construct a new instance of RyderSerial and try to open connection at given port
@@ -179,7 +194,7 @@ export default class RyderSerial extends Events.EventEmitter {
             let offset = 0;
             if (this[state_symbol] === State.SENDING) {
                 this.log(LogLevel.DEBUG, "-> SENDING... ryderserial is trying to send data");
-                if (data[0] === RESPONSE_LOCKED) {
+                if (data[0] === Status.RESPONSE_LOCKED) {
                     this.log(
                         LogLevel.WARN,
                         "!! WARNING: RESPONSE_LOCKED -- RYDER DEVICE IS NEVER SUPPOSED TO EMIT THIS EVENT"
@@ -195,16 +210,16 @@ export default class RyderSerial extends Events.EventEmitter {
                     }
                 }
                 if (
-                    data[0] === RESPONSE_OK ||
-                    data[0] === RESPONSE_SEND_INPUT ||
-                    data[0] === RESPONSE_REJECTED
+                    data[0] === Status.RESPONSE_OK ||
+                    data[0] === Status.RESPONSE_SEND_INPUT ||
+                    data[0] === Status.RESPONSE_REJECTED
                 ) {
                     this.log(
                         LogLevel.DEBUG,
                         "---> (while sending): RESPONSE_OK or RESPONSE_SEND_INPUT or RESPONSE_REJECTED"
                     );
                     this.#train.pop_front();
-                    resolve(data[0]);
+                    resolve({ status: data[0] });
                     if (data.length > 1) {
                         this.log(LogLevel.DEBUG, "ryderserial more in buffer");
                         return this.serial_data.bind(this)(data.slice(1)); // more responses in the buffer
@@ -212,14 +227,14 @@ export default class RyderSerial extends Events.EventEmitter {
                     this[state_symbol] = State.IDLE;
                     this.next();
                     return;
-                } else if (data[0] === RESPONSE_OUTPUT) {
+                } else if (data[0] === Status.RESPONSE_OUTPUT) {
                     this.log(
                         LogLevel.DEBUG,
                         "---> (while sending): RESPONSE_OUTPUT... ryderserial is ready to read"
                     );
                     this[state_symbol] = State.READING;
                     ++offset;
-                } else if (data[0] === RESPONSE_WAIT_USER_CONFIRM) {
+                } else if (data[0] === Status.RESPONSE_WAIT_USER_CONFIRM) {
                     // wait for user to confirm
                     this.emit("wait_user_confirm");
                     this.log(LogLevel.DEBUG, "waiting for user confirm on device");
@@ -264,11 +279,11 @@ export default class RyderSerial extends Events.EventEmitter {
                     const b = data[i];
                     // if previous was not escape byte
                     if (!this.#train.peek_front().is_prev_escaped_byte) {
-                        if (b === RESPONSE_ESC_SEQUENCE) {
+                        if (b === Status.RESPONSE_ESC_SEQUENCE) {
                             // escape previous byte
                             this.#train.peek_front().is_prev_escaped_byte = true;
                             continue; // skip this byte
-                        } else if (b === RESPONSE_OUTPUT_END) {
+                        } else if (b === Status.RESPONSE_OUTPUT_END) {
                             this.log(
                                 LogLevel.DEBUG,
                                 "---> READING SUCCESS resolving output buffer",
@@ -277,7 +292,8 @@ export default class RyderSerial extends Events.EventEmitter {
                                 }
                             );
                             // resolve output buffer
-                            resolve(this.#train.pop_front().output_buffer);
+                            const entry = this.#train.pop_front();
+                            resolve({ status: Status.RESPONSE_OK, data: entry.output_buffer});
                             this[state_symbol] = State.IDLE;
                             this.next();
                             return;
@@ -455,7 +471,7 @@ export default class RyderSerial extends Events.EventEmitter {
     public send(
         data: string | string[] | number | number[] | Uint8Array | Buffer,
         prepend?: boolean
-    ): Promise<string | number> {
+    ): Promise<Response> {
         // if `this.serial` is `undefined` or NOT open, then we do not have a connection
         if (!this.serial?.isOpen) {
             // reject because we do not have a connection

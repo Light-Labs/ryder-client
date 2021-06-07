@@ -31,37 +31,30 @@ const options = {
 initialize().then(() =>
 {
 	const ryder_serial = new RyderSerial(ryder_port, options);
-	ryder_serial.on('open', async () =>
-	{
+	ryder_serial.on('open', async () => {
 		const response = await ryder_serial.send(RyderSerial.COMMAND_INFO);
-		console.log(response);
+		console.log(response.data);
 	});
 });
 
-async function initialize()
-	{
-		if(!ryder_port)
-			{
+async function initialize() {
+		if(!ryder_port) {
 			const devices = await RyderSerial.enumerate_devices();
-			if(devices)
-				{
+			if(devices) {
 				console.log(devices)
-				if(devices.length === 1)
-					{
+				if(devices.length === 1) {
 					ryder_port = devices[0].path;
-					}
-				else if (devices.length > 1)
-					{
+				}
+				else if (devices.length > 1) {
 					// If more than one device is found, then port path must be specified
 					console.debug('More than one device found: path must be specified');
-					}
-				}
-			else
-				{
-				console.log('No device found');
 				}
 			}
-	}
+			else {
+				console.log('No device found');
+			}
+		}
+}
 ```
 
 ## Sequencing commands
@@ -76,26 +69,33 @@ function request_app_private_key(identity_number,app_domain)
 	return ryder_serial.sequence(async () =>
 		{
 		console.debug('starting sequence');
-		var cmd = new Uint8Array(2);
+
+		const cmd = new Uint8Array(2);
 		cmd[0] = RyderSerial.COMMAND_EXPORT_OWNER_APP_KEY_PRIVATE_KEY;
 		cmd[1] = identity_number;
-		var response = await ryder_serial.send(cmd);
-		if (response !== RyderSerial.RESPONSE_SEND_INPUT)
+		const response = await ryder_serial.send(cmd);
+
+		if (response.status !== RyderSerial.RESPONSE_SEND_INPUT) {
 			return false;
+		}
+
 		response = await ryder_serial.send(app_domain+"\0");
-		if (response === RyderSerial.RESPONSE_REJECTED)
+
+		if (response.status === RyderSerial.RESPONSE_REJECTED) {
 			return false; // user cancel
-		var split = response.split(',');
-		var result =
-			{
-				app_domain: split[0].substr(2),
-				app_public_key: split[1],
-				app_private_key: split[2],
-				owner_private_key: split[3]
-			};
+		}
+
+		const split = response.data.split(',');
+		const result = {
+			app_domain: split[0].substr(2),
+			app_public_key: split[1],
+			app_private_key: split[2],
+			owner_private_key: split[3]
+		};
+
 		return result;
-		});
-	}
+	});
+}
 ```
 
 ## API
@@ -157,8 +157,8 @@ Where the 5 bytes spell `"ryder"` in ASCII, followed by 3 version bytes, a mode 
 Example:
 
 ```JS
-const info = await argv._ryder_serial.send(RyderSerial.COMMAND_INFO);
-const version = `${info.charCodeAt(5)}.${info.charCodeAt(6)}.${info.charCodeAt(7)}`;
+const info = await ryder_serial.send(RyderSerial.COMMAND_INFO);
+const version = `${info.charCodeAt(5)}.${info.data.charCodeAt(6)}.${info.data.charCodeAt(7)}`;
 ```
 
 `RyderSerial.COMMAND_SETUP`
@@ -177,8 +177,7 @@ Example:
 
 ```JS
 const response = await ryder_serial.send([RyderSerial.COMMAND_RESTORE_FROM_MNEMONIC,12]);
-if (response === RyderSerial.RESPONSE_SEND_INPUT)
-	{
+if (response === RyderSerial.RESPONSE_SEND_INPUT) {
 	// OK to send words.
 	}
 ```
@@ -205,15 +204,20 @@ Example:
 // where the second value (the 0) is the identity number.
 const data = [RyderSerial.COMMAND_EXPORT_APP_KEY,0];
 const response = await ryder_serial.send(data);
-if (response === RyderSerial.RESPONSE_SEND_INPUT)
-	{
+
+if (response.status === RyderSerial.RESPONSE_SEND_INPUT) {
 	// Send the app domain terminated by a null byte.
-	const app_key = ryder_serial.send("https://btc.us\0");
-	// app key will be RyderSerial.RESPONSE_REJECTED if the user
-	// presses Cancel, otherwise the response will be in the following
-	// format:
-	// "https://btc.us,app_key_here"
+	const app_key = await ryder_serial.send("https://btc.us\0");
+
+	if (app_key.status === RyderSerial.RESPONSE_REJECTED) {
+		// app key will be RyderSerial.RESPONSE_REJECTED if the user presses Cancel
+		console.log("user pressed Cancel");
+	} else {
+		// otherwise the response will be in the following format: "https://btc.us,app_key_here"
+		console.log(app_key.data);
 	}
+
+}
 ```
 
 `RyderSerial.COMMAND_EXPORT_APP_KEY_PRIVATE_KEY`
@@ -237,7 +241,10 @@ Example:
 ```JS
 // where the 0 is the identity number.
 const data = [RyderSerial.COMMAND_EXPORT_PUBLIC_IDENTITY,0];
-const identity = await ryder_serial.send(data);
+const response = await ryder_serial.send(data);
+if (response.status === RyderSerial.RESPONSE_OK) {
+	const identity = response.data;
+}
 ```
 
 `RyderSerial.COMMAND_START_ENCRYPT`

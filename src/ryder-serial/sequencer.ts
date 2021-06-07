@@ -1,6 +1,8 @@
+import { Response } from ".";
+
 export interface Entry {
   data: string[],
-  resolve: (value?: any) => void,
+  resolve: (value: Response | PromiseLike<Response>) => void,
   reject: (error?: Error) => void,
   is_prev_escaped_byte: boolean;
   output_buffer: string;
