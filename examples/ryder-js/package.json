@@ -1,16 +1,16 @@
 {
-  "name": "ryder-js",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "type": "module",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "Chaz Kiker <chazkiker@gmail.com> (https://github.com/chazkiker2)",
-  "license": "ISC",
-  "dependencies": {
-    "@lightlabs/ryderserial-proto": "file:../.."
-  }
+    "name": "ryder-js",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "type": "module",
+    "scripts": {
+        "example": "node index.js"
+    },
+    "keywords": [],
+    "author": "Chaz Kiker <chazkiker@gmail.com> (https://github.com/chazkiker2)",
+    "license": "ISC",
+    "dependencies": {
+        "@lightlabs/ryderserial-proto": "file:../.."
+    }
 }

@@ -273,7 +273,7 @@ export default class RyderSerial extends Events.EventEmitter {
                                 LogLevel.DEBUG,
                                 "---> READING SUCCESS resolving output buffer",
                                 {
-                                    output_buffer: this.#train.display_output_buffer()
+                                    output_buffer: this.#train.display_output_buffer(),
                                 }
                             );
                             // resolve output buffer
@@ -487,8 +487,8 @@ export default class RyderSerial extends Events.EventEmitter {
                 resolve,
                 reject,
                 is_prev_escaped_byte: false,
-                output_buffer: ""
-            }
+                output_buffer: "",
+            };
             prepend ? this.#train.push_front(c) : this.#train.push_tail(c);
             this.next();
         });
@@ -515,11 +515,9 @@ export default class RyderSerial extends Events.EventEmitter {
             try {
                 this.log(
                     LogLevel.DEBUG,
-                    "send data to Ryder: "
-                    + this.#train.peek_front().data.length
-                    + " byte(s)",
+                    "send data to Ryder: " + this.#train.peek_front().data.length + " byte(s)",
                     {
-                        bytes: display_hex(this.#train.peek_front().data)
+                        bytes: display_hex(this.#train.peek_front().data),
                     }
                 );
                 this.serial.write(Buffer.from(this.#train.peek_front().data.join("")));
