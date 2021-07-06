@@ -1,5 +1,11 @@
 .DS_Store
 
+# Examples
+
+/examples/**/node_modules
+/examples/**/package-lock.json
+/examples/**/.env
+
 # Logs
 logs
 *.log
