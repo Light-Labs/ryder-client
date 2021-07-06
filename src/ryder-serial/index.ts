@@ -185,124 +185,144 @@ export default class RyderSerial extends Events.EventEmitter {
         });
         if (this[state_symbol] === State.IDLE) {
             this.log(LogLevel.WARN, "Got data from Ryder without asking, discarding.");
-        } else {
-            clearTimeout(this[watchdog_symbol]);
-            if (this.#train.is_empty()) {
+            return;
+        }
+
+        clearTimeout(this[watchdog_symbol]);
+
+        if (this.#train.is_empty()) {
+            return;
+        }
+
+        const { resolve, reject } = this.#train.peek_front();
+
+        let offset = 0;
+
+        if (this[state_symbol] === State.SENDING) {
+            this.log(LogLevel.DEBUG, "-> SENDING... ryderserial is trying to send data");
+
+
+            if (data[0] === Status.RESPONSE_LOCKED) {
+                this.log(
+                    LogLevel.WARN,
+                    "!! WARNING: RESPONSE_LOCKED -- RYDER DEVICE IS NEVER SUPPOSED TO EMIT THIS EVENT"
+                );
+                if (this.options.reject_on_locked) {
+                    const error = new Error("ERROR_LOCKED");
+                    this.#train.reject_all_remaining(error);
+                    this[state_symbol] = State.IDLE;
+                }
+                this.emit("locked");
                 return;
             }
-            const { resolve, reject } = this.#train.peek_front();
-            let offset = 0;
-            if (this[state_symbol] === State.SENDING) {
-                this.log(LogLevel.DEBUG, "-> SENDING... ryderserial is trying to send data");
-                if (data[0] === Status.RESPONSE_LOCKED) {
-                    this.log(
-                        LogLevel.WARN,
-                        "!! WARNING: RESPONSE_LOCKED -- RYDER DEVICE IS NEVER SUPPOSED TO EMIT THIS EVENT"
-                    );
-                    if (this.options.reject_on_locked) {
-                        const error = new Error("ERROR_LOCKED");
-                        this.#train.reject_all_remaining(error);
-                        this[state_symbol] = State.IDLE;
-                        this.emit("locked");
-                        return;
-                    } else {
-                        this.emit("locked");
-                    }
-                }
-                if (
-                    data[0] === Status.RESPONSE_OK ||
-                    data[0] === Status.RESPONSE_SEND_INPUT ||
-                    data[0] === Status.RESPONSE_REJECTED
-                ) {
-                    this.log(
-                        LogLevel.DEBUG,
-                        "---> (while sending): RESPONSE_OK or RESPONSE_SEND_INPUT or RESPONSE_REJECTED"
-                    );
-                    this.#train.pop_front();
-                    resolve({ status: data[0] });
-                    if (data.length > 1) {
-                        this.log(LogLevel.DEBUG, "ryderserial more in buffer");
-                        return this.serial_data.bind(this)(data.slice(1)); // more responses in the buffer
-                    }
-                    this[state_symbol] = State.IDLE;
-                    this.next();
-                    return;
-                } else if (data[0] === Status.RESPONSE_OUTPUT) {
-                    this.log(
-                        LogLevel.DEBUG,
-                        "---> (while sending): RESPONSE_OUTPUT... ryderserial is ready to read"
-                    );
-                    this[state_symbol] = State.READING;
-                    ++offset;
-                } else if (data[0] === Status.RESPONSE_WAIT_USER_CONFIRM) {
-                    // wait for user to confirm
-                    this.emit("wait_user_confirm");
-                    this.log(LogLevel.DEBUG, "waiting for user confirm on device");
-                    if (data.length > 1) {
-                        this.log(LogLevel.DEBUG, "ryderserial more in buffer");
-                        return this.serial_data.bind(this)(data.slice(1)); // more responses in the buffer
-                    }
-                    return;
-                } else {
-                    // error
-                    const error = new Error(
-                        data[0] in response_errors
-                            ? response_errors[data[0]] // known error
-                            : "ERROR_UNKNOWN_RESPONSE" // unknown error
-                    );
-                    this.log(
-                        LogLevel.ERROR,
-                        "---> (while sending): ryderserial ran into an error",
-                        { error }
-                    );
-                    reject(error);
-                    this.#train.pop_front();
-                    this[state_symbol] = State.IDLE;
-                    if (data.length > 1) {
-                        this.log(LogLevel.DEBUG, "ryderserial more in buffer");
-                        return this.serial_data.bind(this)(data.slice(1)); // more responses in the buffer
-                    }
-                    this.next();
-                    return;
-                }
-            }
-            if (this[state_symbol] === State.READING) {
+
+            if (
+                data[0] === Status.RESPONSE_OK ||
+                data[0] === Status.RESPONSE_SEND_INPUT ||
+                data[0] === Status.RESPONSE_REJECTED
+            ) {
                 this.log(
-                    LogLevel.INFO,
-                    "---> (during response_output): READING... ryderserial is trying to read data"
+                    LogLevel.DEBUG,
+                    "---> (while sending): RESPONSE_OK or RESPONSE_SEND_INPUT or RESPONSE_REJECTED"
                 );
-                this[watchdog_symbol] = setTimeout(
-                    this.serial_watchdog.bind(this),
-                    WATCHDOG_TIMEOUT
-                );
-                for (let i = offset; i < data.byteLength; ++i) {
-                    const b = data[i];
-                    // if previous was not escape byte
-                    if (!this.#train.peek_front().is_prev_escaped_byte) {
-                        if (b === Status.RESPONSE_ESC_SEQUENCE) {
-                            // escape previous byte
-                            this.#train.peek_front().is_prev_escaped_byte = true;
-                            continue; // skip this byte
-                        } else if (b === Status.RESPONSE_OUTPUT_END) {
-                            this.log(
-                                LogLevel.DEBUG,
-                                "---> READING SUCCESS resolving output buffer",
-                                {
-                                    output_buffer: this.#train.display_output_buffer()
-                                }
-                            );
-                            // resolve output buffer
-                            const entry = this.#train.pop_front();
-                            resolve({ status: Status.RESPONSE_OK, data: entry.output_buffer});
-                            this[state_symbol] = State.IDLE;
-                            this.next();
-                            return;
-                        }
-                    }
-                    // else, previous was escape byte
-                    this.#train.peek_front().is_prev_escaped_byte = false;
-                    this.#train.peek_front().output_buffer += String.fromCharCode(b);
+                this.#train.pop_front();
+                resolve({ status: data[0] });
+
+                if (data.length > 1) {
+                    this.log(LogLevel.DEBUG, "ryderserial more in buffer");
+                    return this.serial_data.bind(this)(data.slice(1)); // more responses in the buffer
                 }
+
+                this[state_symbol] = State.IDLE;
+                this.next();
+                return;
+
+            }
+            //
+            else if (data[0] === Status.RESPONSE_OUTPUT) {
+                this.log(
+                    LogLevel.DEBUG,
+                    "---> (while sending): RESPONSE_OUTPUT... ryderserial is ready to read"
+                );
+                // actual reading of data will be managed below
+                this[state_symbol] = State.READING;
+                ++offset;
+            }
+            //
+            else if (data[0] === Status.RESPONSE_WAIT_USER_CONFIRM) {
+                // wait for user to confirm
+                this.emit("wait_user_confirm");
+                this.log(LogLevel.DEBUG, "waiting for user confirm on device");
+                if (data.length > 1) {
+                    this.log(LogLevel.DEBUG, "ryderserial more in buffer");
+                    return this.serial_data.bind(this)(data.slice(1)); // more responses in the buffer
+                }
+                return;
+            }
+            //
+            else {
+                // error
+                const error = new Error(
+                    data[0] in response_errors
+                        ? response_errors[data[0]] // known error
+                        : "ERROR_UNKNOWN_RESPONSE" // unknown error
+                );
+                this.log(
+                    LogLevel.ERROR,
+                    "---> (while sending): ryderserial ran into an error",
+                    { error }
+                );
+                reject(error);
+                this.#train.pop_front();
+                this[state_symbol] = State.IDLE;
+                if (data.length > 1) {
+                    this.log(LogLevel.DEBUG, "ryderserial more in buffer");
+                    return this.serial_data.bind(this)(data.slice(1)); // more responses in the buffer
+                }
+                this.next();
+                return;
+            }
+        }
+
+        // if this.state changed to READING or already was READING
+        // this could have already been READING when we called the function
+        // or it may have been changed when `data[0] == RESPONSE_OUTPUT`
+        if (this[state_symbol] === State.READING) {
+            this.log(
+                LogLevel.INFO,
+                "---> (during response_output): READING... ryderserial is trying to read data"
+            );
+            this[watchdog_symbol] = setTimeout(
+                this.serial_watchdog.bind(this),
+                WATCHDOG_TIMEOUT
+            );
+            for (let i = offset; i < data.byteLength; ++i) {
+                const b = data[i];
+                // if previous was not escape byte
+                if (!this.#train.peek_front().is_prev_escaped_byte) {
+                    if (b === Status.RESPONSE_ESC_SEQUENCE) {
+                        // escape previous byte
+                        this.#train.peek_front().is_prev_escaped_byte = true;
+                        continue; // skip this byte
+                    } else if (b === Status.RESPONSE_OUTPUT_END) {
+                        this.log(
+                            LogLevel.DEBUG,
+                            "---> READING SUCCESS resolving output buffer",
+                            {
+                                output_buffer: this.#train.display_output_buffer()
+                            }
+                        );
+                        // resolve output buffer
+                        const entry = this.#train.pop_front();
+                        resolve({ status: Status.RESPONSE_OK, data: entry.output_buffer});
+                        this[state_symbol] = State.IDLE;
+                        this.next();
+                        return;
+                    }
+                }
+                // else, previous was escape byte
+                this.#train.peek_front().is_prev_escaped_byte = false;
+                this.#train.peek_front().output_buffer += String.fromCharCode(b);
             }
         }
     }
@@ -546,7 +566,9 @@ export default class RyderSerial extends Events.EventEmitter {
             }
             clearTimeout(this[watchdog_symbol]);
             this[watchdog_symbol] = setTimeout(this.serial_watchdog.bind(this), WATCHDOG_TIMEOUT);
-        } else {
+        }
+        //
+        else {
             this.log(LogLevel.INFO, "-> IDLE... ryderserial is waiting for next task.");
         }
     }
