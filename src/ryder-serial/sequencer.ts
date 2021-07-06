@@ -1,11 +1,9 @@
-import { Response } from ".";
-
 export interface Entry {
-    data: Uint8Array;
-    resolve: (value: Response | PromiseLike<Response>) => void;
+    command_buffer: Uint8Array;
+    resolve: (value: Uint8Array | PromiseLike<Uint8Array>) => void;
     reject: (error?: Error) => void;
     is_prev_escaped_byte: boolean;
-    output_buffer: string;
+    output_buffer: Uint8Array;
 }
 
 export default class Train {

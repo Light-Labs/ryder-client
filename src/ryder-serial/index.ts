@@ -212,7 +212,9 @@ export default class RyderSerial extends Events.EventEmitter {
                 "---> (while sending): RESPONSE_OK or RESPONSE_SEND_INPUT or RESPONSE_REJECTED"
             );
             this.#train.pop_front();
-            resolve({ status: data[0] });
+
+            resolve(new Uint8Array(data[0]))
+
 
             if (data.length > 1) {
                 this.log(LogLevel.DEBUG, "ryderserial more in buffer");
@@ -309,15 +311,16 @@ export default class RyderSerial extends Events.EventEmitter {
                         });
                         // resolve output buffer
                         const entry = this.#train.pop_front();
-                        resolve({ status: Status.RESPONSE_OK, data: entry.output_buffer });
+                        resolve(entry.output_buffer);
                         this[state_symbol] = State.IDLE;
                         this.next();
                         return;
                     }
                 }
+                const entry = this.#train.peek_front();
                 // else, previous was escape byte
-                this.#train.peek_front().is_prev_escaped_byte = false;
-                this.#train.peek_front().output_buffer += String.fromCharCode(b);
+                entry.is_prev_escaped_byte = false;
+                entry.output_buffer = new Uint8Array(entry.output_buffer, b)
             }
         }
     }
@@ -483,7 +486,7 @@ export default class RyderSerial extends Events.EventEmitter {
      * @param prepend Set to `true` to put data on top of the queue.
      * @returns A `Promise` that resolves with response from the Ryder device (includes waiting for a possible user confirm). The returned data may be a single byte (see static members of this class) and/or resulting data, like an identity or app key.
      */
-    public send(data: Uint8Array, prepend?: boolean): Promise<Response> {
+    public send(data: Uint8Array, prepend?: boolean): Promise<Uint8Array> {
         // if `this.serial` is `undefined` or NOT open, then we do not have a connection
         if (!this.serial?.isOpen) {
             // reject because we do not have a connection
@@ -496,11 +499,11 @@ export default class RyderSerial extends Events.EventEmitter {
 
         return new Promise((resolve, reject) => {
             const c: Entry = {
-                data,
+                command_buffer: data,
                 resolve,
                 reject,
                 is_prev_escaped_byte: false,
-                output_buffer: "",
+                output_buffer: new Uint8Array(),
             };
             prepend ? this.#train.push_front(c) : this.#train.push_tail(c);
             this.next();
@@ -526,7 +529,7 @@ export default class RyderSerial extends Events.EventEmitter {
             }
             this[state_symbol] = State.SENDING;
             try {
-                const data = this.#train.peek_front().data;
+                const data = this.#train.peek_front().command_buffer;
                 this.log(LogLevel.DEBUG, "send data to Ryder: " + data.length + " byte(s)", {
                     bytes: Buffer.from(data).toString("hex"),
                 });
@@ -538,9 +541,7 @@ export default class RyderSerial extends Events.EventEmitter {
             }
             clearTimeout(this[watchdog_symbol]);
             this[watchdog_symbol] = setTimeout(this.serial_watchdog.bind(this), WATCHDOG_TIMEOUT);
-        }
-        //
-        else {
+        } else {
             this.log(LogLevel.INFO, "-> IDLE... ryderserial is waiting for next task.");
         }
     }
