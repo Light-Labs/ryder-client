@@ -1,5 +1,5 @@
 export interface Entry {
-  data: string[],
+  data: Buffer,
   resolve: (value?: any) => void,
   reject: (error?: Error) => void,
   is_prev_escaped_byte: boolean;
@@ -60,7 +60,7 @@ export default class Train {
     if (this.is_empty()) {
       throw new Error("No entries in train");
     }
-    return this.sequence[this.sequence.length-1];
+    return this.sequence[this.sequence.length - 1];
   }
 
   reject_all_remaining(error?: Error): void {
@@ -72,13 +72,4 @@ export default class Train {
     }
     this.sequence = [];
   }
-
-  display_output_buffer(i?: number): string {
-    if (i === undefined) {
-      i = 0;
-    }
-    return `0x${Buffer.from(this.get(i).output_buffer).toString("hex")}`;
-  }
-
-
 }
