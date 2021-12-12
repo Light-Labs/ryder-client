@@ -102,6 +102,8 @@ export default class RyderSerial extends Events.EventEmitter {
     // encrypt/decrypt commands
     static readonly COMMAND_START_ENCRYPT = 40;
     static readonly COMMAND_START_DECRYPT = 41;
+    // transaction commands
+    static readonly COMMAND_SIGN_TRANSACTION = 50;
     // cancel command
     static readonly COMMAND_CANCEL = 100;
 

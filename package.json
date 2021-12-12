@@ -1,6 +1,6 @@
 {
     "name": "@lightlabs/ryderserial-proto",
-    "version": "0.0.4",
+    "version": "0.0.5",
     "description": "A library to facilitate communications between an application and Ryder device",
     "main": "dist/index.js",
     "types": "dist/types/index.d.ts",
