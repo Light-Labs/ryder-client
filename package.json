@@ -28,6 +28,7 @@
     "dependencies": {
         "@types/node": "^15.3.0",
         "@types/serialport": "^8.0.1",
+        "@types/ws": "^8.5.3",
         "serialport": "^9.0.6"
     },
     "devDependencies": {
