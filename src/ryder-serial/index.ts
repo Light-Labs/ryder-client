@@ -1,4 +1,3 @@
-import SerialPort from "serialport"; // https://serialport.io/docs/
 import Events from "events"; // https://nodejs.org/api/events.html#events_class_eventemitter
 import { LogLevel, Logger, make_logger, log_security_level } from "../logging";
 import Train, { Entry } from "./sequencer";
@@ -44,7 +43,9 @@ const WATCHDOG_TIMEOUT = 5000;
 
 let id = 0;
 
-export interface Options extends SerialPort.OpenOptions {
+export interface Options {
+    baudRate?: 115200|57600|38400|19200|9600|4800|2400|1800|1200|600|300|200|150|134|110|75|50|number;
+    lock?: boolean;
     log_level?: LogLevel;
     logger?: Logger;
     /**
