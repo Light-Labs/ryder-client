@@ -1,10 +1,10 @@
-import SerialPort from "serialport";
-import { WebSocket } from "ws";
+import { w3cwebsocket as WebSocket } from "websocket";
+import { Options } from "../ryder-serial";
 
 export class WSConnection {
     private open: boolean;
     private socket: WebSocket;
-    constructor(path: string, options?: SerialPort.OpenOptions) {
+    constructor(path: string, options?: Options) {
         this.open = false;
         this.socket = new WebSocket(path);
     }
@@ -17,34 +17,34 @@ export class WSConnection {
         data: Buffer,
         callback?: (error: Error | null | undefined, bytesWritten: number) => void
     ): boolean {
-        //do something
+        this.socket.send(data);
         return true;
     }
 
     on(event: string, callback: (data?: any) => void): this {
         switch (event) {
             case "data":
-                this.socket.addEventListener("message", messageEvent => {
+                this.socket.onmessage = messageEvent => {
                     console.log(messageEvent.data);
                     callback(messageEvent.data);
-                });
+                };
                 break;
             case "error":
-                this.socket.addEventListener(event, errorEvent => {
+                this.socket.onerror = errorEvent => {
                     callback(errorEvent);
-                });
+                };
                 break;
             case "close":
-                this.socket.addEventListener("close", closeEvent => {
+                this.socket.onclose = closeEvent => {
                     this.open = false;
                     callback();
-                });
+                };
                 break;
             case "open":
-                this.socket.addEventListener(event, openEvent => {
+                this.socket.onopen = () => {
                     this.open = true;
                     callback();
-                });
+                };
                 break;
 
             default:

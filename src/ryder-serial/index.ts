@@ -1,7 +1,6 @@
 import Events from "events"; // https://nodejs.org/api/events.html#events_class_eventemitter
 import { LogLevel, Logger, make_logger, log_security_level } from "../logging";
 import Train, { Entry } from "./sequencer";
-import { SerialConnection } from "../connection/serial";
 import { WSConnection } from "../connection/ws";
 
 // responses
@@ -44,7 +43,25 @@ const WATCHDOG_TIMEOUT = 5000;
 let id = 0;
 
 export interface Options {
-    baudRate?: 115200|57600|38400|19200|9600|4800|2400|1800|1200|600|300|200|150|134|110|75|50|number;
+    baudRate?:
+        | 115200
+        | 57600
+        | 38400
+        | 19200
+        | 9600
+        | 4800
+        | 2400
+        | 1800
+        | 1200
+        | 600
+        | 300
+        | 200
+        | 150
+        | 134
+        | 110
+        | 75
+        | 50
+        | number;
     lock?: boolean;
     log_level?: LogLevel;
     logger?: Logger;
@@ -74,7 +91,7 @@ export default class RyderSerial extends Events.EventEmitter {
     /** true if `RyderSerial` is in the process of closing */
     closing: boolean;
     /** instantiated on successful connection; sticks around while connection is active */
-    connection?: SerialConnection | WSConnection;
+    connection?: WSConnection;
     /** sequencer implementation to manage process sequencing */
     #train: Train;
     /** current state of the RyderSerial -- either `IDLE`, `SENDING`, `READING` */
@@ -339,14 +356,13 @@ export default class RyderSerial extends Events.EventEmitter {
         if (!this.options.reconnect_time) {
             this.options.reconnect_time = 1_000;
         }
-        this.connection = this.port.startsWith("ws:")
-            ? new WSConnection(this.port, this.options)
-            : new SerialConnection(this.port, this.options);
-        this.connection.on("data", data => {
+        this.connection = new WSConnection(this.port, this.options);
+
+        this.connection.on("data", (data: any) => {
             this.log(LogLevel.DEBUG, "this.serial ran into 'data' event");
             this.serial_data.bind(this)(data);
         });
-        this.connection.on("error", error => {
+        this.connection.on("error", (error: any) => {
             this.log(LogLevel.WARN, `\`this.serial\` encountered an error: ${error}`);
             if (this.connection && !this.connection.isOpen) {
                 clearInterval(this[reconnect_symbol]);
