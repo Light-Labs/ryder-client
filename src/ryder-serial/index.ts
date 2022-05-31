@@ -1,7 +1,7 @@
-import SerialPort from "serialport"; // https://serialport.io/docs/
 import Events from "events"; // https://nodejs.org/api/events.html#events_class_eventemitter
 import { LogLevel, Logger, make_logger, log_security_level } from "../logging";
 import Train, { Entry } from "./sequencer";
+import { WSConnection } from "../connection/ws";
 
 // responses
 const RESPONSE_OK = 1; // generic command ok/received
@@ -42,7 +42,27 @@ const WATCHDOG_TIMEOUT = 5000;
 
 let id = 0;
 
-export interface Options extends SerialPort.OpenOptions {
+export interface Options {
+    baudRate?:
+        | 115200
+        | 57600
+        | 38400
+        | 19200
+        | 9600
+        | 4800
+        | 2400
+        | 1800
+        | 1200
+        | 600
+        | 300
+        | 200
+        | 150
+        | 134
+        | 110
+        | 75
+        | 50
+        | number;
+    lock?: boolean;
     log_level?: LogLevel;
     logger?: Logger;
     /**
@@ -71,7 +91,7 @@ export default class RyderSerial extends Events.EventEmitter {
     /** true if `RyderSerial` is in the process of closing */
     closing: boolean;
     /** instantiated on successful connection; sticks around while connection is active */
-    serial?: SerialPort;
+    connection?: WSConnection;
     /** sequencer implementation to manage process sequencing */
     #train: Train;
     /** current state of the RyderSerial -- either `IDLE`, `SENDING`, `READING` */
@@ -266,13 +286,17 @@ export default class RyderSerial extends Events.EventEmitter {
                             this.#train.peek_front().is_prev_escaped_byte = true;
                             continue; // skip this byte
                         } else if (b === RESPONSE_OUTPUT_END) {
-                            this.#log_level == LogLevel.DEBUG && this.log(
-                                LogLevel.DEBUG,
-                                "---> READING SUCCESS resolving output buffer",
-                                {
-                                    output_buffer: Buffer.from(this.#train.peek_front().output_buffer, 'binary').toString('hex')
-                                }
-                            );
+                            this.#log_level == LogLevel.DEBUG &&
+                                this.log(
+                                    LogLevel.DEBUG,
+                                    "---> READING SUCCESS resolving output buffer",
+                                    {
+                                        output_buffer: Buffer.from(
+                                            this.#train.peek_front().output_buffer,
+                                            "binary"
+                                        ).toString("hex"),
+                                    }
+                                );
                             // resolve output buffer
                             resolve(this.#train.pop_front().output_buffer);
                             this[state_symbol] = State.IDLE;
@@ -310,13 +334,13 @@ export default class RyderSerial extends Events.EventEmitter {
         this.log(LogLevel.DEBUG, "ryderserial attempt open");
         this.closing = false;
 
-        // if serial is already open
-        if (this.serial?.isOpen) {
+        // if connection is already open
+        if (this.connection?.isOpen) {
             // TODO: what if client code is intentionally trying to open connection to a new port for some reason? Or passed in new options?
             return; // return out, we don't need to open a new connection
         }
-        // if serial is defined, but it's actively closed
-        if (this.serial) {
+        // if connection is defined, but it's actively closed
+        if (this.connection) {
             // close RyderSerial b/c client is trying to open a new connection.
             // `this.close()` will clear all interval timeouts, set destroy `this.serial`, reject all pending processes, and unlock all locks.
             this.close();
@@ -332,14 +356,15 @@ export default class RyderSerial extends Events.EventEmitter {
         if (!this.options.reconnect_time) {
             this.options.reconnect_time = 1_000;
         }
-        this.serial = new SerialPort(this.port, this.options);
-        this.serial.on("data", data => {
+        this.connection = new WSConnection(this.port, this.options);
+
+        this.connection.on("data", (data: any) => {
             this.log(LogLevel.DEBUG, "this.serial ran into 'data' event");
             this.serial_data.bind(this)(data);
         });
-        this.serial.on("error", error => {
+        this.connection.on("error", (error: any) => {
             this.log(LogLevel.WARN, `\`this.serial\` encountered an error: ${error}`);
-            if (this.serial && !this.serial.isOpen) {
+            if (this.connection && !this.connection.isOpen) {
                 clearInterval(this[reconnect_symbol]);
                 this[reconnect_symbol] = setInterval(
                     this.open.bind(this),
@@ -349,7 +374,7 @@ export default class RyderSerial extends Events.EventEmitter {
             }
             this.serial_error.bind(this);
         });
-        this.serial.on("close", () => {
+        this.connection.on("close", () => {
             this.log(LogLevel.DEBUG, "ryderserial close");
             this.emit("close");
             clearInterval(this[reconnect_symbol]);
@@ -360,7 +385,7 @@ export default class RyderSerial extends Events.EventEmitter {
                 );
             }
         });
-        this.serial.on("open", () => {
+        this.connection.on("open", () => {
             this.log(LogLevel.DEBUG, "ryderserial open");
             clearInterval(this[reconnect_symbol]);
             this.emit("open");
@@ -369,13 +394,13 @@ export default class RyderSerial extends Events.EventEmitter {
     }
 
     /**
-     * Close down `this.serial` connection and reset `RyderSerial`
+     * Close down `this.connection` connection and reset `RyderSerial`
      *
      * All tasks include:
      * - clear watchdog timeout,
      * - reject pending processes,
      * - release all locks.
-     * - close serial connection,
+     * - close connection,
      * - clear reconnect interval
      * - destroy `this.serial`
      */
@@ -385,9 +410,9 @@ export default class RyderSerial extends Events.EventEmitter {
         }
         this.closing = true;
         this.clear(); // clears watchdog timeout, rejects all pending processes, and releases all locks.
-        this.serial?.close(); // close serial if it exists
+        this.connection?.close(); // close connection if it exists
         clearInterval(this[reconnect_symbol]); // clear reconnect interval
-        delete this.serial; // destroy serial
+        delete this.connection; // destroy connection
     }
 
     /**
@@ -454,32 +479,32 @@ export default class RyderSerial extends Events.EventEmitter {
         prepend?: boolean
     ): Promise<string | number> {
         // if `this.serial` is `undefined` or NOT open, then we do not have a connection
-        if (!this.serial?.isOpen) {
+        if (!this.connection?.isOpen) {
             // reject because we do not have a connection
             return Promise.reject(new Error("ERROR_DISCONNECTED"));
         }
         let buff: Buffer;
         if (typeof data === "string") {
-            buff = Buffer.from(data, 'binary');
-        }
-        else if (typeof data === "number") {
+            buff = Buffer.from(data, "binary");
+        } else if (typeof data === "number") {
             buff = Buffer.from([data]);
-        }
-        else { // Uint8Array or number[]
+        } else {
+            // Uint8Array or number[]
             buff = Buffer.from(data);
         }
 
-        this.#log_level == LogLevel.DEBUG && this.log(LogLevel.DEBUG, "queue data for Ryder: " + buff.length + " byte(s)", {
-            bytes: buff.toString('hex')
-        });
+        this.#log_level == LogLevel.DEBUG &&
+            this.log(LogLevel.DEBUG, "queue data for Ryder: " + buff.length + " byte(s)", {
+                bytes: buff.toString("hex"),
+            });
         return new Promise((resolve, reject) => {
             const c: Entry = {
                 data: buff,
                 resolve,
                 reject,
                 is_prev_escaped_byte: false,
-                output_buffer: ""
-            }
+                output_buffer: "",
+            };
             prepend ? this.#train.push_front(c) : this.#train.push_tail(c);
             this.next();
         });
@@ -494,7 +519,7 @@ export default class RyderSerial extends Events.EventEmitter {
     private next(): void {
         if (this[state_symbol] === State.IDLE && !this.#train.is_empty()) {
             this.log(LogLevel.INFO, "-> NEXT... ryderserial is moving to next task");
-            if (!this.serial?.isOpen) {
+            if (!this.connection?.isOpen) {
                 // `this.serial` is undefined or not open
                 this.log(LogLevel.ERROR, "ryderserial connection to port has shut down");
                 const { reject } = this.#train.peek_front();
@@ -503,17 +528,16 @@ export default class RyderSerial extends Events.EventEmitter {
                 return;
             }
             this[state_symbol] = State.SENDING;
-            this.#log_level == LogLevel.DEBUG && this.log(
-                LogLevel.DEBUG,
-                "send data to Ryder: "
-                + this.#train.peek_front().data.byteLength
-                + " byte(s)",
-                {
-                    bytes: this.#train.peek_front().data.toString('hex')
-                }
-            );
+            this.#log_level == LogLevel.DEBUG &&
+                this.log(
+                    LogLevel.DEBUG,
+                    "send data to Ryder: " + this.#train.peek_front().data.byteLength + " byte(s)",
+                    {
+                        bytes: this.#train.peek_front().data.toString("hex"),
+                    }
+                );
             try {
-                this.serial.write(this.#train.peek_front().data);
+                this.connection.write(this.#train.peek_front().data);
             } catch (error) {
                 this.log(LogLevel.ERROR, `encountered error while sending data: ${error}`);
                 this.serial_error(error as Error);
@@ -543,15 +567,4 @@ export default class RyderSerial extends Events.EventEmitter {
             this[lock_symbol][i] && this[lock_symbol][i](); // release all locks
         this[lock_symbol] = [];
     }
-}
-
-/**
- * Retrieve all Ryder devices from SerialPort connection.
- */
-export async function enumerate_devices(): Promise<SerialPort.PortInfo[]> {
-    const devices = await SerialPort.list();
-    const ryder_devices = devices.filter(
-        device => device.vendorId === "10c4" && device.productId === "ea60"
-    );
-    return Promise.resolve(ryder_devices);
 }

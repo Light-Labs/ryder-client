@@ -1,2 +1,2 @@
-export { default, Options, enumerate_devices } from "./ryder-serial";
+export { default, Options } from "./ryder-serial";
 export { LogLevel, Logger } from "./logging";
