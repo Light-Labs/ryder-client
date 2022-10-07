@@ -266,13 +266,17 @@ export default class RyderSerial extends Events.EventEmitter {
                             this.#train.peek_front().is_prev_escaped_byte = true;
                             continue; // skip this byte
                         } else if (b === RESPONSE_OUTPUT_END) {
-                            this.#log_level == LogLevel.DEBUG && this.log(
-                                LogLevel.DEBUG,
-                                "---> READING SUCCESS resolving output buffer",
-                                {
-                                    output_buffer: Buffer.from(this.#train.peek_front().output_buffer, 'binary').toString('hex')
-                                }
-                            );
+                            this.#log_level == LogLevel.DEBUG &&
+                                this.log(
+                                    LogLevel.DEBUG,
+                                    "---> READING SUCCESS resolving output buffer",
+                                    {
+                                        output_buffer: Buffer.from(
+                                            this.#train.peek_front().output_buffer,
+                                            "binary"
+                                        ).toString("hex"),
+                                    }
+                                );
                             // resolve output buffer
                             resolve(this.#train.pop_front().output_buffer);
                             this[state_symbol] = State.IDLE;
@@ -460,26 +464,26 @@ export default class RyderSerial extends Events.EventEmitter {
         }
         let buff: Buffer;
         if (typeof data === "string") {
-            buff = Buffer.from(data, 'binary');
-        }
-        else if (typeof data === "number") {
+            buff = Buffer.from(data, "binary");
+        } else if (typeof data === "number") {
             buff = Buffer.from([data]);
-        }
-        else { // Uint8Array or number[]
+        } else {
+            // Uint8Array or number[]
             buff = Buffer.from(data);
         }
 
-        this.#log_level == LogLevel.DEBUG && this.log(LogLevel.DEBUG, "queue data for Ryder: " + buff.length + " byte(s)", {
-            bytes: buff.toString('hex')
-        });
+        this.#log_level == LogLevel.DEBUG &&
+            this.log(LogLevel.DEBUG, "queue data for Ryder: " + buff.length + " byte(s)", {
+                bytes: buff.toString("hex"),
+            });
         return new Promise((resolve, reject) => {
             const c: Entry = {
                 data: buff,
                 resolve,
                 reject,
                 is_prev_escaped_byte: false,
-                output_buffer: ""
-            }
+                output_buffer: "",
+            };
             prepend ? this.#train.push_front(c) : this.#train.push_tail(c);
             this.next();
         });
@@ -503,15 +507,14 @@ export default class RyderSerial extends Events.EventEmitter {
                 return;
             }
             this[state_symbol] = State.SENDING;
-            this.#log_level == LogLevel.DEBUG && this.log(
-                LogLevel.DEBUG,
-                "send data to Ryder: "
-                + this.#train.peek_front().data.byteLength
-                + " byte(s)",
-                {
-                    bytes: this.#train.peek_front().data.toString('hex')
-                }
-            );
+            this.#log_level == LogLevel.DEBUG &&
+                this.log(
+                    LogLevel.DEBUG,
+                    "send data to Ryder: " + this.#train.peek_front().data.byteLength + " byte(s)",
+                    {
+                        bytes: this.#train.peek_front().data.toString("hex"),
+                    }
+                );
             try {
                 this.serial.write(this.#train.peek_front().data);
             } catch (error) {
